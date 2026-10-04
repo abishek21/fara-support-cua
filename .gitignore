@@ -1,0 +1,35 @@
+# ===== SECRETS — never commit =====
+support_env/azure_openai_config.json
+azure_openai_config.json
+runpod_config.json
+**/azure_openai_config.json
+
+# ===== Nested upstream clone (separate repo) =====
+/fara/
+
+# ===== Sandbox DB + server artifacts =====
+support_env/support.db
+support_env/*.db
+support_env/db_v1_backup.py
+support_env/server.log
+
+# ===== Runs / generated data =====
+runs/
+support_env/runs/
+support_env/tasks_generated.jsonl
+support_env/tasks_hard_generated.jsonl
+
+# ===== Temp / preview scratch files =====
+support_env/gen_preview.txt
+support_env/gen2.txt
+support_env/gen_llm_preview.txt
+support_env/seedinfo.txt
+support_env/bench_hard.txt
+support_env/l3rerun.txt
+*.tmp
+
+# ===== Python / env =====
+__pycache__/
+*.pyc
+.venv/
+*.log

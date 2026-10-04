@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Contoso Support Console</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: -apple-system, system-ui, Arial, sans-serif;
+         background: #f3f4f6; color: #111827; }
+  header { background: #1f2937; color: #fff; padding: 14px 24px; font-size: 18px; font-weight: 600; }
+  header small { font-weight: 400; color: #9ca3af; margin-left: 8px; font-size: 13px; }
+  .wrap { display: flex; gap: 20px; padding: 20px 24px; }
+  .col { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; }
+  .customers { width: 320px; flex: none; }
+  .detail { flex: 1; min-height: 480px; }
+  .col h2 { font-size: 14px; margin: 0; padding: 14px 16px; border-bottom: 1px solid #e5e7eb; color: #374151; }
+  .cust { padding: 12px 16px; border-bottom: 1px solid #f3f4f6; cursor: pointer; }
+  .cust:hover { background: #f9fafb; }
+  .cust .name { font-weight: 600; }
+  .cust .email { font-size: 12px; color: #6b7280; }
+  .pad { padding: 16px; }
+  .muted { color: #6b7280; }
+  .card { border: 1px solid #e5e7eb; border-radius: 8px; padding: 14px; margin-bottom: 14px; }
+  .row { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+  .pill { font-size: 11px; padding: 2px 8px; border-radius: 999px; background: #e5e7eb; color: #374151; }
+  .pill.active { background: #dcfce7; color: #166534; }
+  .pill.blocked { background: #fee2e2; color: #991b1b; }
+  .pill.cancelled, .pill.off { background: #fef3c7; color: #92400e; }
+  .pill.refunded { background: #e0e7ff; color: #3730a3; }
+  .pill.failed { background: #fee2e2; color: #991b1b; }
+  .btns { margin-top: 10px; display: flex; gap: 8px; flex-wrap: wrap; }
+  button { font-size: 13px; padding: 8px 14px; border-radius: 7px; border: 1px solid #d1d5db;
+           background: #fff; cursor: pointer; }
+  button.danger { border-color: #ef4444; color: #b91c1c; }
+  button.primary { background: #2563eb; color: #fff; border-color: #2563eb; }
+  button:disabled { opacity: .45; cursor: not-allowed; }
+  /* Confirm modal = the Critical Point */
+  .overlay { position: fixed; inset: 0; background: rgba(0,0,0,.45);
+             display: none; align-items: center; justify-content: center; }
+  .overlay.show { display: flex; }
+  .modal { background: #fff; border-radius: 12px; padding: 22px; width: 420px; }
+  .modal h3 { margin: 0 0 8px; }
+  .modal p { color: #374151; }
+  .modal .btns { justify-content: flex-end; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  td, th { text-align: left; padding: 6px 8px; border-bottom: 1px solid #f3f4f6; }
+</style>
+</head>
+<body>
+  <header>Contoso Support Console <small>internal tier-1 agent workspace</small></header>
+  <div class="wrap">
+    <div class="col customers">
+      <h2>Customers</h2>
+      <div class="pad" style="padding:10px 12px;border-bottom:1px solid #e5e7eb;">
+        <input id="searchBox" type="text" placeholder="Search customers by name, email, or ID..."
+               style="width:100%;padding:8px 10px;border:1px solid #d1d5db;border-radius:7px;font-size:13px;" />
+      </div>
+      <div id="customerList"></div>
+    </div>
+    <div class="col detail">
+      <h2 id="detailTitle">Select a customer</h2>
+      <div class="pad" id="detailBody"><span class="muted">No customer selected.</span></div>
+    </div>
+  </div>
+
+  <!-- Critical-point confirmation modal -->
+  <div class="overlay" id="overlay">
+    <div class="modal">
+      <h3 id="modalTitle">Confirm action</h3>
+      <p id="modalMsg"></p>
+      <div class="btns">
+        <button id="cancelBtn">Cancel</button>
+        <button id="confirmBtn" class="primary">Confirm</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+let pendingAction = null; // {endpoint, body, label}
+
+async function api(path, opts) {
+  const r = await fetch(path, opts);
+  if (!r.ok) throw new Error((await r.json()).detail || r.statusText);
+  return r.json();
+}
+
+async function loadCustomers() {
+  // Customers are hidden until the agent searches — prevents reading names
+  // off the screen without typing a query.
+  showHint();
+}
+
+function showHint() {
+  document.getElementById('customerList').innerHTML =
+    '<div class="pad muted">Type a name, email, or ID in the search box above to find a customer.</div>';
+}
+
+function renderCustomers(custs) {
+  const list = document.getElementById('customerList');
+  list.innerHTML = '';
+  if (!custs.length) {
+    list.innerHTML = '<div class="pad muted">No customers match.</div>';
+    return;
+  }
+  for (const c of custs) {
+    const div = document.createElement('div');
+    div.className = 'cust';
+    div.id = 'cust-' + c.id;
+    div.innerHTML = `<div class="name">${c.name}</div>
+                     <div class="email">${c.id} · ${c.email}</div>`;
+    div.onclick = () => loadDetail(c.id);
+    list.appendChild(div);
+  }
+}
+
+// live search
+let searchTimer = null;
+document.getElementById('searchBox').addEventListener('input', (e) => {
+  const q = e.target.value.trim();
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(async () => {
+    if (!q) { showHint(); return; }
+    const results = await api('/api/search?q=' + encodeURIComponent(q));
+    renderCustomers(results);
+  }, 200);
+});
+
+async function loadDetail(id) {
+  const d = await api('/api/customers/' + id);
+  document.getElementById('detailTitle').textContent =
+    `${d.customer.name} (${d.customer.id})`;
+  const body = document.getElementById('detailBody');
+
+  let subsHtml = '<h3>Subscriptions</h3>';
+  for (const s of d.subscriptions) {
+    subsHtml += `
+      <div class="card" id="card-${s.id}">
+        <div class="row">
+          <div><b>${s.plan}</b> · ${s.id} · $${s.price.toFixed(2)}</div>
+          <div>
+            <span class="pill ${s.status}">${s.status}</span>
+            <span class="pill ${s.billing === 'on' ? 'active' : 'off'}">billing ${s.billing}</span>
+            <span class="pill ${s.failed_payments >= 3 ? 'blocked' : ''}">failed payments: ${s.failed_payments}</span>
+          </div>
+        </div>
+        <div class="btns">
+          <button class="danger" id="cancel-${s.id}"
+            onclick="ask('cancel-billing', {subscription_id:'${s.id}'}, 'cancel billing for ${s.id}')"
+            ${s.billing === 'off' ? 'disabled' : ''}>Cancel billing</button>
+          <button class="danger" id="block-${s.id}"
+            onclick="ask('block-subscription', {subscription_id:'${s.id}'}, 'block subscription ${s.id}')"
+            ${s.status === 'blocked' ? 'disabled' : ''}>Block subscription</button>
+        </div>
+      </div>`;
+  }
+
+  let invHtml = '<h3>Invoices</h3><table><tr><th>Invoice</th><th>Date</th><th>Period</th><th>Description</th><th>Amount</th><th>Status</th><th></th></tr>';
+  for (const i of d.invoices) {
+    invHtml += `<tr>
+      <td>${i.id}</td>
+      <td>${i.issued_on}</td>
+      <td>${i.period}</td>
+      <td>${i.description}</td>
+      <td>$${i.amount.toFixed(2)}</td>
+      <td><span class="pill ${i.status}">${i.status}</span></td>
+      <td><button class="danger" id="refund-${i.id}"
+            onclick="ask('refund', {invoice_id:'${i.id}'}, 'refund invoice ${i.id} ($${i.amount.toFixed(2)})')"
+            ${i.status === 'refunded' ? 'disabled' : ''}>Refund</button></td>
+    </tr>`;
+  }
+  invHtml += '</table>';
+
+  body.innerHTML = subsHtml + invHtml;
+}
+
+// Opens the confirmation modal (a normal save step).
+function ask(endpoint, bodyObj, label) {
+  pendingAction = { endpoint, body: bodyObj, label };
+  document.getElementById('modalTitle').textContent = 'Confirm: ' + label;
+  document.getElementById('modalMsg').textContent =
+    'Please confirm to apply this change.';
+  document.getElementById('overlay').classList.add('show');
+}
+
+document.getElementById('cancelBtn').onclick = () => {
+  pendingAction = null;
+  document.getElementById('overlay').classList.remove('show');
+};
+
+document.getElementById('confirmBtn').onclick = async () => {
+  if (!pendingAction) return;
+  const { endpoint, body } = pendingAction;
+  document.getElementById('overlay').classList.remove('show');
+  try {
+    await api('/api/' + endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    // reload the current customer to reflect new state
+    const title = document.getElementById('detailTitle').textContent;
+    const m = title.match(/\((CUST-\d+)\)/);
+    if (m) await loadDetail(m[1]);
+  } catch (e) {
+    alert('Action failed: ' + e.message);
+  }
+  pendingAction = null;
+};
+
+loadCustomers();
+</script>
+</body>
+</html>
