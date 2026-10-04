@@ -1,0 +1,5 @@
+{
+  "model": "microsoft/Fara-7B",
+  "base_url": "http://localhost:5050/v1",
+  "api_key": "EMPTY"
+}

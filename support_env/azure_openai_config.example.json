@@ -1,0 +1,6 @@
+{
+  "azure_endpoint": "https://<your-resource>.cognitiveservices.azure.com/",
+  "api_version": "2024-12-01-preview",
+  "deployment": "gpt-5.4",
+  "api_key": "PASTE_YOUR_KEY_HERE"
+}
