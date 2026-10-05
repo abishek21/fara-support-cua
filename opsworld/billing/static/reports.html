@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Contoso Billing — Reports</title>
+<style>
+  *{box-sizing:border-box} body{margin:0;font-family:-apple-system,system-ui,Arial,sans-serif;background:#f0fdfa;color:#0f2e2a}
+  header{background:#0f766e;color:#fff;padding:14px 24px;font-size:18px;font-weight:600;display:flex;gap:18px;align-items:center}
+  header small{font-weight:400;color:#99f6e4;font-size:13px}
+  nav a{color:#99f6e4;text-decoration:none;font-size:14px;font-weight:500;margin-left:14px}
+  nav a.active{color:#fff;text-decoration:underline}
+  .wrap{padding:20px 24px}
+  .panel{background:#fff;border:1px solid #cce9e4;border-radius:10px;padding:16px;margin-bottom:16px}
+  .filters{display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end}
+  label{font-size:12px;color:#475569;display:block;margin-bottom:4px}
+  select,input{padding:8px 10px;border:1px solid #99d6cd;border-radius:7px;font-size:13px}
+  button{font-size:13px;padding:8px 14px;border-radius:7px;border:1px solid #0f766e;background:#0f766e;color:#fff;cursor:pointer}
+  button.light{background:#fff;color:#0f766e}
+  .agg{display:flex;gap:28px;margin-top:4px;font-size:15px}
+  .agg b{font-size:22px;display:block;color:#0f766e}
+  table{width:100%;border-collapse:collapse;font-size:13px} td,th{text-align:left;padding:7px 9px;border-bottom:1px solid #eefaf7}
+  th{color:#334155;font-weight:600}
+  .pill{font-size:11px;padding:2px 8px;border-radius:999px;background:#e2e8f0;color:#334155}
+  .pill.active{background:#dcfce7;color:#166534}.pill.blocked{background:#fee2e2;color:#991b1b}.pill.off{background:#fef3c7;color:#92400e}
+</style></head><body>
+<header>Contoso Billing <small>reports</small>
+  <nav><a href="/">Accounts</a><a href="/reports" class="active">Reports</a></nav>
+</header>
+<div class="wrap">
+  <div class="panel"><div class="filters">
+    <div><label>Subscription status</label><select id="f_status">
+      <option value="all">all</option><option value="active">active</option><option value="blocked">blocked</option></select></div>
+    <div><label>Billing</label><select id="f_billing">
+      <option value="all">all</option><option value="on">on</option><option value="off">off</option></select></div>
+    <div><label>Plan</label><select id="f_plan">
+      <option value="all">all</option><option>Starter Monthly</option><option>Pro Monthly</option>
+      <option>Team Monthly</option><option>Business Annual</option></select></div>
+    <div><label>Min failed payments</label><input id="f_failed" type="number" min="0" value="0" style="width:120px"/></div>
+    <div><button id="apply">Apply filters</button></div>
+    <div><button class="light" id="clear">Clear</button></div>
+  </div></div>
+
+  <div class="panel"><div class="agg">
+    <div>Matching accounts <b id="agg_count">—</b></div>
+    <div>Monthly recurring revenue <b id="agg_mrr">—</b></div>
+  </div></div>
+
+  <div class="panel"><table>
+    <thead><tr><th>Account</th><th>Name</th><th>Plan</th><th>Price</th><th>Billing</th><th>Status</th><th>Failed</th></tr></thead>
+    <tbody id="rows"><tr><td colspan="7" style="color:#64748b">Apply a filter to see accounts.</td></tr></tbody>
+  </table></div>
+</div>
+<script>
+async function run(){
+  const p=new URLSearchParams({status:f_status.value,billing:f_billing.value,plan:f_plan.value,min_failed:f_failed.value});
+  const d=await (await fetch('/api/report?'+p)).json();
+  document.getElementById('agg_count').textContent=d.aggregates.count;
+  document.getElementById('agg_mrr').textContent='$'+d.aggregates.mrr.toFixed(2);
+  const tb=document.getElementById('rows');tb.innerHTML='';
+  if(!d.rows.length){tb.innerHTML='<tr><td colspan="7" style="color:#64748b">No accounts match.</td></tr>';return}
+  for(const r of d.rows){const tr=document.createElement('tr');
+    tr.innerHTML=`<td>${r.account_id}</td><td>${r.name}</td><td>${r.plan}</td><td>$${r.price.toFixed(2)}</td>
+      <td><span class="pill ${r.billing==='on'?'active':'off'}">${r.billing}</span></td>
+      <td><span class="pill ${r.status}">${r.status}</span></td><td>${r.failed_payments}</td>`;
+    tb.appendChild(tr)}
+}
+document.getElementById('apply').onclick=run;
+document.getElementById('clear').onclick=()=>{f_status.value='all';f_billing.value='all';f_plan.value='all';f_failed.value='0';run()};
+</script></body></html>

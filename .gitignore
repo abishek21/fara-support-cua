@@ -13,6 +13,11 @@ support_env/*.db
 support_env/db_v1_backup.py
 support_env/server.log
 
+# ===== OpsWorld (multi-system sandbox) artifacts =====
+opsworld/**/*.db
+opsworld/**/server.log
+opsworld/_*.txt
+
 # ===== Runs / generated data =====
 runs/
 support_env/runs/

@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Contoso Billing</title>
+<style>
+  *{box-sizing:border-box} body{margin:0;font-family:-apple-system,system-ui,Arial,sans-serif;background:#f0fdfa;color:#0f2e2a}
+  header{background:#0f766e;color:#fff;padding:14px 24px;font-size:18px;font-weight:600}
+  header small{font-weight:400;color:#99f6e4;margin-left:8px;font-size:13px}
+  .wrap{display:flex;gap:20px;padding:20px 24px}
+  .col{background:#fff;border:1px solid #cce9e4;border-radius:10px}
+  .left{width:320px;flex:none} .right{flex:1;min-height:460px}
+  .col h2{font-size:14px;margin:0;padding:14px 16px;border-bottom:1px solid #d7f0eb;color:#334155}
+  .pad{padding:16px} .muted{color:#64748b}
+  input{width:100%;padding:8px 10px;border:1px solid #99d6cd;border-radius:7px;font-size:13px}
+  .acct{padding:12px 16px;border-bottom:1px solid #eefaf7;cursor:pointer}
+  .acct:hover{background:#f6fefc} .acct .name{font-weight:600} .acct .sub{font-size:12px;color:#64748b}
+  .pill{font-size:11px;padding:2px 8px;border-radius:999px;background:#e2e8f0;color:#334155}
+  .pill.active{background:#dcfce7;color:#166534}.pill.blocked{background:#fee2e2;color:#991b1b}
+  .pill.off{background:#fef3c7;color:#92400e}.pill.refunded{background:#e0e7ff;color:#3730a3}.pill.failed{background:#fee2e2;color:#991b1b}
+  .card{border:1px solid #d7f0eb;border-radius:8px;padding:14px;margin-bottom:14px}
+  .row{display:flex;justify-content:space-between;align-items:center;gap:12px}
+  table{width:100%;border-collapse:collapse;font-size:13px}td,th{text-align:left;padding:6px 8px;border-bottom:1px solid #eefaf7}
+  button{font-size:13px;padding:8px 14px;border-radius:7px;border:1px solid #cbd5e1;background:#fff;cursor:pointer}
+  button.primary{background:#0f766e;color:#fff;border-color:#0f766e} button:disabled{opacity:.45;cursor:not-allowed}
+  .btns{margin-top:10px;display:flex;gap:8px;flex-wrap:wrap}
+  .overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center}
+  .overlay.show{display:flex}.modal{background:#fff;border-radius:12px;padding:22px;width:420px}.modal .btns{justify-content:flex-end}
+  header{display:flex;gap:18px;align-items:center}
+  nav a{color:#99f6e4;text-decoration:none;font-size:14px;font-weight:500;margin-left:14px} nav a.active{color:#fff;text-decoration:underline}
+</style></head><body>
+<header>Contoso Billing <small>subscription &amp; invoicing system</small>
+  <nav><a href="/" class="active">Accounts</a><a href="/reports">Reports</a></nav>
+</header>
+<div class="wrap">
+  <div class="col left"><h2>Accounts</h2>
+    <div class="pad" style="padding:10px 12px;border-bottom:1px solid #d7f0eb">
+      <input id="search" placeholder="Search accounts by name, email, or ID..."/></div>
+    <div id="list"></div></div>
+  <div class="col right"><h2 id="title">Select an account</h2>
+    <div class="pad" id="body"><span class="muted">Search for an account to begin.</span></div></div>
+</div>
+<div class="overlay" id="ov"><div class="modal"><h3 id="mtitle">Confirm</h3>
+  <p id="mmsg">Please confirm to apply this change.</p>
+  <div class="btns"><button onclick="closeModal()">Cancel</button><button class="primary" id="mok">Confirm</button></div></div></div>
+<script>
+let pending=null;
+async function api(p,o){const r=await fetch(p,o);if(!r.ok)throw new Error((await r.json()).detail||r.statusText);return r.json()}
+function hint(){document.getElementById('list').innerHTML='<div class="pad muted">Type to search accounts.</div>'}
+function render(rows){const l=document.getElementById('list');l.innerHTML='';if(!rows.length){l.innerHTML='<div class="pad muted">No matches.</div>';return}
+  for(const c of rows){const d=document.createElement('div');d.className='acct';d.innerHTML=`<div class="name">${c.name}</div><div class="sub">${c.account_id} · ${c.email}</div>`;d.onclick=()=>openAcct(c.account_id);l.appendChild(d)}}
+let t=null;document.getElementById('search').addEventListener('input',e=>{const q=e.target.value.trim();clearTimeout(t);t=setTimeout(async()=>{if(!q){hint();return}render(await api('/api/search?q='+encodeURIComponent(q)))},200)});
+async function openAcct(id){const d=await api('/api/accounts/'+id);const a=d.account;const s=d.subscriptions[0];
+  document.getElementById('title').textContent=`${a.name} (${a.account_id})`;
+  let subHtml=`<div class="card" id="card-${s.id}"><div class="row"><div><b>${s.plan}</b> · ${s.id} · $${s.price.toFixed(2)}</div>
+     <div><span class="pill ${s.status}">${s.status}</span> <span class="pill ${s.billing==='on'?'active':'off'}">billing ${s.billing}</span>
+       <span class="pill ${s.failed_payments>=3?'blocked':''}">failed: ${s.failed_payments}</span></div></div>
+     <div class="btns"><button class="primary" id="cancel-${s.id}" onclick="ask('cancel-billing',{subscription_id:'${s.id}'},'cancel billing for ${s.id}')" ${s.billing==='off'?'disabled':''}>Cancel billing</button>
+       <button class="primary" id="block-${s.id}" onclick="ask('block-subscription',{subscription_id:'${s.id}'},'block subscription ${s.id}')" ${s.status==='blocked'?'disabled':''}>Block subscription</button></div></div>`;
+  let invHtml='<div class="card"><b>Invoices</b><table><tr><th>Invoice</th><th>Period</th><th>Amount</th><th>Status</th><th></th></tr>';
+  for(const i of d.invoices){invHtml+=`<tr><td>${i.id}</td><td>${i.period}</td><td>$${i.amount.toFixed(2)}</td><td><span class="pill ${i.status}">${i.status}</span></td>
+     <td><button class="primary" id="refund-${i.id}" onclick="ask('refund',{invoice_id:'${i.id}'},'refund ${i.id} ($${i.amount.toFixed(2)})')" ${i.status!=='paid'?'disabled':''}>Refund</button></td></tr>`}
+  invHtml+='</table></div>';
+  document.getElementById('body').innerHTML=subHtml+invHtml;
+}
+function ask(ep,body,label){pending={ep,body};document.getElementById('mtitle').textContent='Confirm: '+label;document.getElementById('ov').classList.add('show')}
+function closeModal(){pending=null;document.getElementById('ov').classList.remove('show')}
+document.getElementById('mok').onclick=async()=>{if(!pending)return;const{ep,body}=pending;closeModal();
+  try{await api('/api/'+ep,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    const m=document.getElementById('title').textContent.match(/\((ACC-\d+)\)/);if(m)await openAcct(m[1])}catch(e){alert('Failed: '+e.message)}};
+hint();
+</script></body></html>
