@@ -3,6 +3,9 @@ support_env/azure_openai_config.json
 azure_openai_config.json
 runpod_config.json
 **/azure_openai_config.json
+hf_config.json
+**/hf_config.json
+.hf_token
 
 # ===== Nested upstream clone (separate repo) =====
 /fara/
