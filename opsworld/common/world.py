@@ -79,9 +79,10 @@ def _sub_id(acc: str) -> str:
     return "SUB-" + acc.split("-")[1]
 
 
-def generate_world():
-    """Return (accounts: dict[id->Account], scenarios: list[Scenario])."""
-    rng = random.Random(SEED)
+def generate_world(seed: int | None = None):
+    """Return (accounts: dict[id->Account], scenarios: list[Scenario]).
+    Deterministic in `seed` (defaults to the DB_SEED env)."""
+    rng = random.Random(SEED if seed is None else int(seed))
     used_names: set[str] = set()
 
     def rand_name() -> str:
@@ -136,7 +137,6 @@ def generate_world():
         ))
 
     # ---- Scenario B: reconciled refund (Billing duplicate, CRM active owner) ----
-    # Correct: refund the duplicate in Billing AND add a case note in CRM.
     for _ in range(3):
         aid = take()
         a = accounts[aid]
@@ -180,6 +180,22 @@ def generate_world():
             systems=["billing"],
             verify={"type": "all_of", "checks": [
                 {"system": "billing", "type": "block_subscription", "subscription_id": _sub_id(aid)},
+            ]},
+        ))
+
+    # ---- Scenario C2: customer requests billing cancellation (Billing-only) ----
+    for _ in range(3):
+        aid = take()
+        a = accounts[aid]
+        a.scenario = "cancel_request"
+        a.crm_status = "active"
+        a.billing_on = True
+        scenarios.append(Scenario(
+            scenario_id=f"sc_cancel_{aid}", kind="cancel_request", account_id=aid,
+            brief="this customer emailed asking to stop being billed going forward",
+            systems=["billing"],
+            verify={"type": "all_of", "checks": [
+                {"system": "billing", "type": "cancel_billing", "subscription_id": _sub_id(aid)},
             ]},
         ))
 

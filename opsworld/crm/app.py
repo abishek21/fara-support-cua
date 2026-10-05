@@ -19,9 +19,10 @@ from common import dbutil
 from common.world import generate_world
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-DB = os.path.join(HERE, "crm.db")
+DB = os.environ.get("CRM_DB", os.path.join(HERE, "crm.db"))
 STATIC = os.path.join(HERE, "static")
 TABLES = ["accounts", "cases", "audit_log"]
+_SEED = {"value": None}  # current seed this DB is populated with
 
 SCHEMA = """
 DROP TABLE IF EXISTS audit_log;
@@ -49,8 +50,9 @@ CREATE TABLE audit_log (
 app = FastAPI(title="Contoso CRM")
 
 
-def seed():
-    accounts, _ = generate_world()
+def seed_db(seed_value=None):
+    accounts, _ = generate_world(seed_value)
+    _SEED["value"] = seed_value
     conn = dbutil.connect(DB)
     try:
         conn.executescript(SCHEMA)
@@ -65,7 +67,11 @@ def seed():
 
 
 if not os.path.exists(DB):
-    seed()
+    seed_db()
+
+# backward-compat alias (run_all.sh imports `seed`)
+seed = seed_db
+seed_db_fn = seed_db
 
 
 class NoteReq(BaseModel):
@@ -146,9 +152,10 @@ def update_status(req: StatusReq):
 
 
 @app.post("/api/reset")
-def reset():
-    seed()
-    return {"ok": True}
+def reset(seed: int | None = None):
+    """Reseed the CRM DB. Optional ?seed=N reseeds to a specific world."""
+    seed_db_fn(seed)
+    return {"ok": True, "seed": seed}
 
 
 @app.get("/api/snapshot")
