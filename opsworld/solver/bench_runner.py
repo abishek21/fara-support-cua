@@ -142,14 +142,26 @@ def main():
     json.dump(results, open(os.path.join(out_root, "results.json"), "w"), indent=2)
 
     print(f"\n==== SCORECARD [{args.label}] ({time.time()-t0:.0f}s) ====")
+    print(f"  {'category':<12} {'pass':>7}  {'rate':>6}   readiness")
     overall = []
     for c in CATEGORIES:
         xs = by_cat.get(c, [])
         overall += xs
         rate = 100 * sum(xs) / len(xs) if xs else 0
-        print(f"  {c:<12} {sum(xs):>3}/{len(xs):<3}  {rate:5.1f}%")
+        # GRPO needs a non-zero reward signal to amplify; <10% => SFT first.
+        if rate < 10:
+            flag = "SFT needed (not GRPO-ready)"
+        elif rate < 40:
+            flag = "weak signal (SFT recommended)"
+        else:
+            flag = "GRPO-viable"
+        print(f"  {c:<12} {sum(xs):>3}/{len(xs):<3}  {rate:5.1f}%   {flag}")
     rate = 100 * sum(overall) / len(overall) if overall else 0
     print(f"  {'OVERALL':<12} {sum(overall):>3}/{len(overall):<3}  {rate:5.1f}%")
+    any_zero = any((100 * sum(by_cat.get(c, [])) / len(by_cat[c]) if by_cat.get(c) else 0) < 10
+                   for c in CATEGORIES)
+    print("\n  VERDICT:", "Some category is ~0% -> SFT is required before GRPO."
+          if any_zero else "All categories have signal -> a GRPO-only arm is worth trying too.")
     print(f"results: {os.path.join(out_root, 'results.json')}")
 
 
