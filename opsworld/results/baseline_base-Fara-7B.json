@@ -1,0 +1,842 @@
+[
+  {
+    "task_id": "C3_block_seed9002",
+    "category": "C3_block",
+    "run": 0,
+    "success": true,
+    "reason": "all required changes present; no extra changes"
+  },
+  {
+    "task_id": "C1_refund_seed9000",
+    "category": "C1_refund",
+    "run": 0,
+    "success": true,
+    "reason": "all required changes present; no extra changes"
+  },
+  {
+    "task_id": "C2_cancel_seed9001",
+    "category": "C2_cancel",
+    "run": 0,
+    "success": false,
+    "reason": "required check failed: [billing] SUB-1072 billing not off"
+  },
+  {
+    "task_id": "C5_below_seed9004",
+    "category": "C5_below",
+    "run": 0,
+    "success": true,
+    "reason": "correctly made no changes in any system"
+  },
+  {
+    "task_id": "C4_churn_seed9003",
+    "category": "C4_churn",
+    "run": 0,
+    "success": true,
+    "reason": "all required changes present; no extra changes"
+  },
+  {
+    "task_id": "C1_refund_seed9006",
+    "category": "C1_refund",
+    "run": 0,
+    "success": true,
+    "reason": "all required changes present; no extra changes"
+  },
+  {
+    "task_id": "C6_noerror_seed9005",
+    "category": "C6_noerror",
+    "run": 0,
+    "success": true,
+    "reason": "correctly made no changes in any system"
+  },
+  {
+    "task_id": "C3_block_seed9008",
+    "category": "C3_block",
+    "run": 0,
+    "success": true,
+    "reason": "all required changes present; no extra changes"
+  },
+  {
+    "task_id": "C2_cancel_seed9007",
+    "category": "C2_cancel",
+    "run": 0,
+    "success": false,
+    "reason": "required check failed: [billing] SUB-1049 billing not off"
+  },
+  {
+    "task_id": "C4_churn_seed9009",
+    "category": "C4_churn",
+    "run": 0,
+    "success": false,
+    "reason": "required check failed: [crm] no case note added for ACC-1049"
+  },
+  {
+    "task_id": "C1_refund_seed9012",
+    "category": "C1_refund",
+    "run": 0,
+    "success": false,
+    "reason": "required check failed: [billing] no refund issued"
+  },
+  {
+    "task_id": "C5_below_seed9010",
+    "category": "C5_below",
+    "run": 0,
+    "success": true,
+    "reason": "correctly made no changes in any system"
+  },
+  {
+    "task_id": "C6_noerror_seed9011",
+    "category": "C6_noerror",
+    "run": 0,
+    "success": false,
+    "reason": "unexpected change(s) in [('billing', 'invoices'), ('billing', 'refunds'), ('crm', 'cases')]"
+  },
+  {
+    "task_id": "C2_cancel_seed9013",
+    "category": "C2_cancel",
+    "run": 0,
+    "success": true,
+    "reason": "all required changes present; no extra changes"
+  },
+  {
+    "task_id": "C3_block_seed9014",
+    "category": "C3_block",
+    "run": 0,
+    "success": true,
+    "reason": "all required changes present; no extra changes"
+  },
+  {
+    "task_id": "C5_below_seed9016",
+    "category": "C5_below",
+    "run": 0,
+    "success": false,
+    "reason": "unexpected change(s) in [('billing', 'subscriptions')]"
+  },
+  {
+    "task_id": "C4_churn_seed9015",
+    "category": "C4_churn",
+    "run": 0,
+    "success": false,
+    "reason": "required check failed: [billing] SUB-1037 billing not off"
+  },
+  {
+    "task_id": "C6_noerror_seed9017",
+    "category": "C6_noerror",
+    "run": 0,
+    "success": false,
+    "reason": "unexpected change(s) in [('billing', 'invoices'), ('billing', 'refunds')]"
+  },
+  {
+    "task_id": "C1_refund_seed9018",
+    "category": "C1_refund",
+    "run": 0,
+    "success": false,
+    "reason": "required check failed: [billing] no refund issued"
+  },
+  {
+    "task_id": "C2_cancel_seed9019",
+    "category": "C2_cancel",
+    "run": 0,
+    "success": true,
+    "reason": "all required changes present; no extra changes"
+  },
+  {
+    "task_id": "C3_block_seed9020",
+    "category": "C3_block",
+    "run": 0,
+    "success": false,
+    "reason": "required check failed: [billing] SUB-1031 not blocked"
+  },
+  {
+    "task_id": "C4_churn_seed9021",
+    "category": "C4_churn",
+    "run": 0,
+    "success": false,
+    "reason": "required check failed: [crm] no case note added for ACC-1059"
+  },
+  {
+    "task_id": "C5_below_seed9022",
+    "category": "C5_below",
+    "run": 0,
+    "success": true,
+    "reason": "correctly made no changes in any system"
+  },
+  {
+    "task_id": "C6_noerror_seed9023",
+    "category": "C6_noerror",
+    "run": 0,
+    "success": true,
+    "reason": "correctly made no changes in any system"
+  },
+  {
+    "task_id": "C1_refund_seed9024",
+    "category": "C1_refund",
+    "run": 0,
+    "success": false,
+    "reason": "required check failed: [billing] no refund issued"
+  },
+  {
+    "task_id": "C2_cancel_seed9025",
+    "category": "C2_cancel",
+    "run": 0,
+    "success": false,
+    "reason": "required check failed: [billing] SUB-1078 billing not off"
+  },
+  {
+    "task_id": "C3_block_seed9026",
+    "category": "C3_block",
+    "run": 0,
+    "success": false,
+    "reason": "required check failed: [billing] SUB-1002 not blocked"
+  },
+  {
+    "task_id": "C4_churn_seed9027",
+    "category": "C4_churn",
+    "run": 0,
+    "success": false,
+    "reason": "required check failed: [billing] SUB-1045 billing not off"
+  },
+  {
+    "task_id": "C5_below_seed9028",
+    "category": "C5_below",
+    "run": 0,
+    "success": true,
+    "reason": "correctly made no changes in any system"
+  },
+  {
+    "task_id": "C6_noerror_seed9029",
+    "category": "C6_noerror",
+    "run": 0,
+    "success": true,
+    "reason": "correctly made no changes in any system"
+  },
+  {
+    "task_id": "C2_cancel_seed9031",
+    "category": "C2_cancel",
+    "run": 0,
+    "success": true,
+    "reason": "all required changes present; no extra changes"
+  },
+  {
+    "task_id": "C1_refund_seed9030",
+    "category": "C1_refund",
+    "run": 0,
+    "success": false,
+    "reason": "required check failed: [billing] no refund issued"
+  },
+  {
+    "task_id": "C3_block_seed9032",
+    "category": "C3_block",
+    "run": 0,
+    "success": true,
+    "reason": "all required changes present; no extra changes"
+  },
+  {
+    "task_id": "C4_churn_seed9033",
+    "category": "C4_churn",
+    "run": 0,
+    "success": true,
+    "reason": "all required changes present; no extra changes"
+  },
+  {
+    "task_id": "C5_below_seed9034",
+    "category": "C5_below",
+    "run": 0,
+    "success": true,
+    "reason": "correctly made no changes in any system"
+  },
+  {
+    "task_id": "C6_noerror_seed9035",
+    "category": "C6_noerror",
+    "run": 0,
+    "success": true,
+    "reason": "correctly made no changes in any system"
+  },
+  {
+    "task_id": "C1_refund_seed9036",
+    "category": "C1_refund",
+    "run": 0,
+    "success": true,
+    "reason": "all required changes present; no extra changes"
+  },
+  {
+    "task_id": "C3_block_seed9038",
+    "category": "C3_block",
+    "run": 0,
+    "success": true,
+    "reason": "all required changes present; no extra changes"
+  },
+  {
+    "task_id": "C2_cancel_seed9037",
+    "category": "C2_cancel",
+    "run": 0,
+    "success": true,
+    "reason": "all required changes present; no extra changes"
+  },
+  {
+    "task_id": "C5_below_seed9040",
+    "category": "C5_below",
+    "run": 0,
+    "success": true,
+    "reason": "correctly made no changes in any system"
+  },
+  {
+    "task_id": "C4_churn_seed9039",
+    "category": "C4_churn",
+    "run": 0,
+    "success": false,
+    "reason": "required check failed: [billing] SUB-1023 billing not off"
+  },
+  {
+    "task_id": "C6_noerror_seed9041",
+    "category": "C6_noerror",
+    "run": 0,
+    "success": true,
+    "reason": "correctly made no changes in any system"
+  },
+  {
+    "task_id": "C1_refund_seed9042",
+    "category": "C1_refund",
+    "run": 0,
+    "success": false,
+    "reason": "required check failed: [crm] no case note added for ACC-1065"
+  },
+  {
+    "task_id": "C3_block_seed9044",
+    "category": "C3_block",
+    "run": 0,
+    "success": true,
+    "reason": "all required changes present; no extra changes"
+  },
+  {
+    "task_id": "C2_cancel_seed9043",
+    "category": "C2_cancel",
+    "run": 0,
+    "success": false,
+    "reason": "required check failed: [billing] SUB-1067 billing not off"
+  },
+  {
+    "task_id": "C4_churn_seed9045",
+    "category": "C4_churn",
+    "run": 0,
+    "success": false,
+    "reason": "required check failed: [billing] SUB-1044 billing not off"
+  },
+  {
+    "task_id": "C5_below_seed9046",
+    "category": "C5_below",
+    "run": 0,
+    "success": true,
+    "reason": "correctly made no changes in any system"
+  },
+  {
+    "task_id": "C6_noerror_seed9047",
+    "category": "C6_noerror",
+    "run": 0,
+    "success": true,
+    "reason": "correctly made no changes in any system"
+  },
+  {
+    "task_id": "C1_refund_seed9048",
+    "category": "C1_refund",
+    "run": 0,
+    "success": false,
+    "reason": "required check failed: [billing] no refund issued"
+  },
+  {
+    "task_id": "C3_block_seed9050",
+    "category": "C3_block",
+    "run": 0,
+    "success": false,
+    "reason": "required check failed: [billing] SUB-1060 not blocked"
+  },
+  {
+    "task_id": "C2_cancel_seed9049",
+    "category": "C2_cancel",
+    "run": 0,
+    "success": false,
+    "reason": "required check failed: [billing] SUB-1002 billing not off"
+  },
+  {
+    "task_id": "C4_churn_seed9051",
+    "category": "C4_churn",
+    "run": 0,
+    "success": false,
+    "reason": "required check failed: [billing] SUB-1051 billing not off"
+  },
+  {
+    "task_id": "C5_below_seed9052",
+    "category": "C5_below",
+    "run": 0,
+    "success": true,
+    "reason": "correctly made no changes in any system"
+  },
+  {
+    "task_id": "C6_noerror_seed9053",
+    "category": "C6_noerror",
+    "run": 0,
+    "success": true,
+    "reason": "correctly made no changes in any system"
+  },
+  {
+    "task_id": "C1_refund_seed9054",
+    "category": "C1_refund",
+    "run": 0,
+    "success": false,
+    "reason": "required check failed: [billing] no refund issued"
+  },
+  {
+    "task_id": "C2_cancel_seed9055",
+    "category": "C2_cancel",
+    "run": 0,
+    "success": false,
+    "reason": "required check failed: [billing] SUB-1041 billing not off"
+  },
+  {
+    "task_id": "C3_block_seed9056",
+    "category": "C3_block",
+    "run": 0,
+    "success": true,
+    "reason": "all required changes present; no extra changes"
+  },
+  {
+    "task_id": "C4_churn_seed9057",
+    "category": "C4_churn",
+    "run": 0,
+    "success": false,
+    "reason": "required check failed: [billing] SUB-1060 billing not off"
+  },
+  {
+    "task_id": "C5_below_seed9058",
+    "category": "C5_below",
+    "run": 0,
+    "success": true,
+    "reason": "correctly made no changes in any system"
+  },
+  {
+    "task_id": "C6_noerror_seed9059",
+    "category": "C6_noerror",
+    "run": 0,
+    "success": false,
+    "reason": "unexpected change(s) in [('billing', 'invoices'), ('billing', 'refunds')]"
+  },
+  {
+    "task_id": "C1_refund_seed9060",
+    "category": "C1_refund",
+    "run": 0,
+    "success": true,
+    "reason": "all required changes present; no extra changes"
+  },
+  {
+    "task_id": "C3_block_seed9062",
+    "category": "C3_block",
+    "run": 0,
+    "success": true,
+    "reason": "all required changes present; no extra changes"
+  },
+  {
+    "task_id": "C2_cancel_seed9061",
+    "category": "C2_cancel",
+    "run": 0,
+    "success": false,
+    "reason": "required check failed: [billing] SUB-1028 billing not off"
+  },
+  {
+    "task_id": "C4_churn_seed9063",
+    "category": "C4_churn",
+    "run": 0,
+    "success": false,
+    "reason": "required check failed: [billing] SUB-1050 billing not off"
+  },
+  {
+    "task_id": "C5_below_seed9064",
+    "category": "C5_below",
+    "run": 0,
+    "success": false,
+    "reason": "unexpected change(s) in [('billing', 'subscriptions')]"
+  },
+  {
+    "task_id": "C1_refund_seed9066",
+    "category": "C1_refund",
+    "run": 0,
+    "success": false,
+    "reason": "required check failed: [billing] no refund issued"
+  },
+  {
+    "task_id": "C6_noerror_seed9065",
+    "category": "C6_noerror",
+    "run": 0,
+    "success": false,
+    "reason": "unexpected change(s) in [('billing', 'invoices'), ('billing', 'refunds')]"
+  },
+  {
+    "task_id": "C2_cancel_seed9067",
+    "category": "C2_cancel",
+    "run": 0,
+    "success": true,
+    "reason": "all required changes present; no extra changes"
+  },
+  {
+    "task_id": "C3_block_seed9068",
+    "category": "C3_block",
+    "run": 0,
+    "success": true,
+    "reason": "all required changes present; no extra changes"
+  },
+  {
+    "task_id": "C4_churn_seed9069",
+    "category": "C4_churn",
+    "run": 0,
+    "success": false,
+    "reason": "required check failed: [billing] SUB-1021 billing not off"
+  },
+  {
+    "task_id": "C5_below_seed9070",
+    "category": "C5_below",
+    "run": 0,
+    "success": true,
+    "reason": "correctly made no changes in any system"
+  },
+  {
+    "task_id": "C6_noerror_seed9071",
+    "category": "C6_noerror",
+    "run": 0,
+    "success": true,
+    "reason": "correctly made no changes in any system"
+  },
+  {
+    "task_id": "C3_block_seed9074",
+    "category": "C3_block",
+    "run": 0,
+    "success": true,
+    "reason": "all required changes present; no extra changes"
+  },
+  {
+    "task_id": "C1_refund_seed9072",
+    "category": "C1_refund",
+    "run": 0,
+    "success": false,
+    "reason": "required check failed: [billing] no refund issued"
+  },
+  {
+    "task_id": "C2_cancel_seed9073",
+    "category": "C2_cancel",
+    "run": 0,
+    "success": true,
+    "reason": "all required changes present; no extra changes"
+  },
+  {
+    "task_id": "C5_below_seed9076",
+    "category": "C5_below",
+    "run": 0,
+    "success": false,
+    "reason": "unexpected change(s) in [('crm', 'cases')]"
+  },
+  {
+    "task_id": "C4_churn_seed9075",
+    "category": "C4_churn",
+    "run": 0,
+    "success": true,
+    "reason": "all required changes present; no extra changes"
+  },
+  {
+    "task_id": "C6_noerror_seed9077",
+    "category": "C6_noerror",
+    "run": 0,
+    "success": true,
+    "reason": "correctly made no changes in any system"
+  },
+  {
+    "task_id": "C3_block_seed9080",
+    "category": "C3_block",
+    "run": 0,
+    "success": true,
+    "reason": "all required changes present; no extra changes"
+  },
+  {
+    "task_id": "C1_refund_seed9078",
+    "category": "C1_refund",
+    "run": 0,
+    "success": false,
+    "reason": "required check failed: [billing] no refund issued"
+  },
+  {
+    "task_id": "C2_cancel_seed9079",
+    "category": "C2_cancel",
+    "run": 0,
+    "success": false,
+    "reason": "required check failed: [billing] SUB-1020 wrongly blocked (should only cancel billing)"
+  },
+  {
+    "task_id": "C4_churn_seed9081",
+    "category": "C4_churn",
+    "run": 0,
+    "success": true,
+    "reason": "all required changes present; no extra changes"
+  },
+  {
+    "task_id": "C5_below_seed9082",
+    "category": "C5_below",
+    "run": 0,
+    "success": true,
+    "reason": "correctly made no changes in any system"
+  },
+  {
+    "task_id": "C6_noerror_seed9083",
+    "category": "C6_noerror",
+    "run": 0,
+    "success": false,
+    "reason": "unexpected change(s) in [('billing', 'invoices'), ('billing', 'refunds')]"
+  },
+  {
+    "task_id": "C3_block_seed9086",
+    "category": "C3_block",
+    "run": 0,
+    "success": true,
+    "reason": "all required changes present; no extra changes"
+  },
+  {
+    "task_id": "C1_refund_seed9084",
+    "category": "C1_refund",
+    "run": 0,
+    "success": false,
+    "reason": "required check failed: [billing] no refund issued"
+  },
+  {
+    "task_id": "C2_cancel_seed9085",
+    "category": "C2_cancel",
+    "run": 0,
+    "success": false,
+    "reason": "required check failed: [billing] SUB-1041 billing not off"
+  },
+  {
+    "task_id": "C4_churn_seed9087",
+    "category": "C4_churn",
+    "run": 0,
+    "success": false,
+    "reason": "required check failed: [billing] SUB-1034 billing not off"
+  },
+  {
+    "task_id": "C5_below_seed9088",
+    "category": "C5_below",
+    "run": 0,
+    "success": false,
+    "reason": "unexpected change(s) in [('billing', 'subscriptions')]"
+  },
+  {
+    "task_id": "C6_noerror_seed9089",
+    "category": "C6_noerror",
+    "run": 0,
+    "success": true,
+    "reason": "correctly made no changes in any system"
+  },
+  {
+    "task_id": "C1_refund_seed9090",
+    "category": "C1_refund",
+    "run": 0,
+    "success": false,
+    "reason": "required check failed: [billing] no refund issued"
+  },
+  {
+    "task_id": "C2_cancel_seed9091",
+    "category": "C2_cancel",
+    "run": 0,
+    "success": false,
+    "reason": "required check failed: [billing] SUB-1061 billing not off"
+  },
+  {
+    "task_id": "C3_block_seed9092",
+    "category": "C3_block",
+    "run": 0,
+    "success": false,
+    "reason": "unexpected/extra change(s) not permitted: ['crm.cases:added']"
+  },
+  {
+    "task_id": "C5_below_seed9094",
+    "category": "C5_below",
+    "run": 0,
+    "success": true,
+    "reason": "correctly made no changes in any system"
+  },
+  {
+    "task_id": "C4_churn_seed9093",
+    "category": "C4_churn",
+    "run": 0,
+    "success": false,
+    "reason": "required check failed: [billing] SUB-1026 billing not off"
+  },
+  {
+    "task_id": "C6_noerror_seed9095",
+    "category": "C6_noerror",
+    "run": 0,
+    "success": true,
+    "reason": "correctly made no changes in any system"
+  },
+  {
+    "task_id": "C3_block_seed9098",
+    "category": "C3_block",
+    "run": 0,
+    "success": true,
+    "reason": "all required changes present; no extra changes"
+  },
+  {
+    "task_id": "C1_refund_seed9096",
+    "category": "C1_refund",
+    "run": 0,
+    "success": false,
+    "reason": "required check failed: [billing] no refund issued"
+  },
+  {
+    "task_id": "C2_cancel_seed9097",
+    "category": "C2_cancel",
+    "run": 0,
+    "success": true,
+    "reason": "all required changes present; no extra changes"
+  },
+  {
+    "task_id": "C4_churn_seed9099",
+    "category": "C4_churn",
+    "run": 0,
+    "success": false,
+    "reason": "required check failed: [billing] SUB-1071 billing not off"
+  },
+  {
+    "task_id": "C5_below_seed9100",
+    "category": "C5_below",
+    "run": 0,
+    "success": true,
+    "reason": "correctly made no changes in any system"
+  },
+  {
+    "task_id": "C6_noerror_seed9101",
+    "category": "C6_noerror",
+    "run": 0,
+    "success": true,
+    "reason": "correctly made no changes in any system"
+  },
+  {
+    "task_id": "C1_refund_seed9102",
+    "category": "C1_refund",
+    "run": 0,
+    "success": true,
+    "reason": "all required changes present; no extra changes"
+  },
+  {
+    "task_id": "C2_cancel_seed9103",
+    "category": "C2_cancel",
+    "run": 0,
+    "success": true,
+    "reason": "all required changes present; no extra changes"
+  },
+  {
+    "task_id": "C3_block_seed9104",
+    "category": "C3_block",
+    "run": 0,
+    "success": true,
+    "reason": "all required changes present; no extra changes"
+  },
+  {
+    "task_id": "C4_churn_seed9105",
+    "category": "C4_churn",
+    "run": 0,
+    "success": false,
+    "reason": "required check failed: [crm] no case note added for ACC-1024"
+  },
+  {
+    "task_id": "C6_noerror_seed9107",
+    "category": "C6_noerror",
+    "run": 0,
+    "success": true,
+    "reason": "correctly made no changes in any system"
+  },
+  {
+    "task_id": "C5_below_seed9106",
+    "category": "C5_below",
+    "run": 0,
+    "success": true,
+    "reason": "correctly made no changes in any system"
+  },
+  {
+    "task_id": "C1_refund_seed9108",
+    "category": "C1_refund",
+    "run": 0,
+    "success": true,
+    "reason": "all required changes present; no extra changes"
+  },
+  {
+    "task_id": "C3_block_seed9110",
+    "category": "C3_block",
+    "run": 0,
+    "success": true,
+    "reason": "all required changes present; no extra changes"
+  },
+  {
+    "task_id": "C4_churn_seed9111",
+    "category": "C4_churn",
+    "run": 0,
+    "success": false,
+    "reason": "required check failed: [billing] SUB-1009 billing not off"
+  },
+  {
+    "task_id": "C2_cancel_seed9109",
+    "category": "C2_cancel",
+    "run": 0,
+    "success": false,
+    "reason": "required check failed: [billing] SUB-1055 billing not off"
+  },
+  {
+    "task_id": "C5_below_seed9112",
+    "category": "C5_below",
+    "run": 0,
+    "success": true,
+    "reason": "correctly made no changes in any system"
+  },
+  {
+    "task_id": "C1_refund_seed9114",
+    "category": "C1_refund",
+    "run": 0,
+    "success": true,
+    "reason": "all required changes present; no extra changes"
+  },
+  {
+    "task_id": "C6_noerror_seed9113",
+    "category": "C6_noerror",
+    "run": 0,
+    "success": true,
+    "reason": "correctly made no changes in any system"
+  },
+  {
+    "task_id": "C2_cancel_seed9115",
+    "category": "C2_cancel",
+    "run": 0,
+    "success": false,
+    "reason": "unexpected/extra change(s) not permitted: ['crm.accounts:changed']"
+  },
+  {
+    "task_id": "C3_block_seed9116",
+    "category": "C3_block",
+    "run": 0,
+    "success": false,
+    "reason": "required check failed: [billing] SUB-1047 not blocked"
+  },
+  {
+    "task_id": "C4_churn_seed9117",
+    "category": "C4_churn",
+    "run": 0,
+    "success": true,
+    "reason": "all required changes present; no extra changes"
+  },
+  {
+    "task_id": "C5_below_seed9118",
+    "category": "C5_below",
+    "run": 0,
+    "success": true,
+    "reason": "correctly made no changes in any system"
+  },
+  {
+    "task_id": "C6_noerror_seed9119",
+    "category": "C6_noerror",
+    "run": 0,
+    "success": true,
+    "reason": "correctly made no changes in any system"
+  }
+]

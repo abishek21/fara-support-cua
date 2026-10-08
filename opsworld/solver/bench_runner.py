@@ -39,7 +39,8 @@ def load_eval(path):
     return [json.loads(l) for l in open(path) if l.strip()]
 
 
-def run_fara(task, crm_url, bill_url, endpoint, start_url, out_dir, max_rounds):
+def run_fara(task, crm_url, bill_url, endpoint, start_url, out_dir, max_rounds,
+             save_screens=False):
     """Run fara-cli on one task against the given isolated env. Returns run dir."""
     os.makedirs(out_dir, exist_ok=True)
     aug = (task["instruction"]
@@ -48,8 +49,9 @@ def run_fara(task, crm_url, bill_url, endpoint, start_url, out_dir, max_rounds):
              f"systems, navigate to the appropriate URL.")
     cmd = ["fara-cli", "--fara-7b", "--task", aug,
            "--endpoint_config", endpoint, "--start_page", start_url,
-           "--save_screenshots", "--max_rounds", str(max_rounds),
-           "--output_folder", out_dir]
+           "--max_rounds", str(max_rounds), "--output_folder", out_dir]
+    if save_screens:
+        cmd.append("--save_screenshots")
     env = dict(os.environ, PYTHONUNBUFFERED="1")
     with open(os.path.join(out_dir, "console.log"), "w") as log:
         subprocess.run(cmd, input="\n\n", text=True, env=env,
@@ -57,8 +59,9 @@ def run_fara(task, crm_url, bill_url, endpoint, start_url, out_dir, max_rounds):
     return out_dir
 
 
-def worker(wenv, work_q, endpoint, out_root, max_rounds, results, rlock):
+def worker(wenv, work_q, endpoint, out_root, max_rounds, results, rlock, screens_mode):
     crm_url, bill_url = wenv["crm"], wenv["billing"]
+    save_screens = screens_mode in ("all", "fail")
     while True:
         try:
             task, run_idx = work_q.get_nowait()
@@ -72,10 +75,19 @@ def worker(wenv, work_q, endpoint, out_root, max_rounds, results, rlock):
                       "billing": _get(bill_url + "/api/snapshot")}
             start = (crm_url if task["start_system"] == "crm" else bill_url) + "/"
             out_dir = os.path.join(out_root, task["task_id"], f"run{run_idx}")
-            run_fara(task, crm_url, bill_url, endpoint, start, out_dir, max_rounds)
+            run_fara(task, crm_url, bill_url, endpoint, start, out_dir, max_rounds,
+                     save_screens=save_screens)
             after = {"crm": _get(crm_url + "/api/snapshot"),
                      "billing": _get(bill_url + "/api/snapshot")}
             res = verify_task(task["verify"], before, after)
+            # keep screenshots only for FAILURES (when in 'fail' mode)
+            if screens_mode == "fail" and res["success"]:
+                for f in os.listdir(out_dir):
+                    if f.endswith(".png"):
+                        try:
+                            os.remove(os.path.join(out_dir, f))
+                        except OSError:
+                            pass
             with rlock:
                 results.append({"task_id": task["task_id"], "category": task["category"],
                                 "run": run_idx, "success": res["success"],
@@ -100,6 +112,9 @@ def main():
     ap.add_argument("--max-rounds", type=int, default=25)
     ap.add_argument("--out", default="runs/bench_base")
     ap.add_argument("--label", default="model")
+    ap.add_argument("--screens", choices=["none", "fail", "all"], default="fail",
+                    help="screenshots: none | fail (keep only failures) | all. "
+                         "console.log is always kept.")
     ap.add_argument("--limit", type=int, default=0, help="debug: only first N tasks")
     args = ap.parse_args()
 
@@ -124,7 +139,8 @@ def main():
     t0 = time.time()
     try:
         threads = [threading.Thread(target=worker, args=(
-            envs[w], work_q, endpoint, out_root, args.max_rounds, results, rlock))
+            envs[w], work_q, endpoint, out_root, args.max_rounds, results, rlock,
+            args.screens))
             for w in range(args.workers)]
         for th in threads:
             th.start()
