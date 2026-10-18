@@ -1,0 +1,2 @@
+- name: opsworld
+  _target_: grpo.verl_loop.OpsWorldAgentLoop

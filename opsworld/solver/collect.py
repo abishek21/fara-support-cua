@@ -62,12 +62,15 @@ def spawn_env(w: int, base_dir: str) -> dict:
     env = dict(os.environ, CRM_DB=os.path.join(wd, "crm.db"),
                BILLING_DB=os.path.join(wd, "billing.db"))
     devnull = open(os.devnull, "w")
-    crm = subprocess.Popen([sys.executable, "-m", "uvicorn", "crm.app:app",
-                            "--port", str(cport), "--log-level", "warning"],
-                           cwd=OPSROOT, env=env, stdout=devnull, stderr=devnull)
-    bill = subprocess.Popen([sys.executable, "-m", "uvicorn", "billing.app:app",
-                             "--port", str(bport), "--log-level", "warning"],
-                            cwd=OPSROOT, env=env, stdout=devnull, stderr=devnull)
+    try:
+        crm = subprocess.Popen([sys.executable, "-m", "uvicorn", "crm.app:app",
+                                "--port", str(cport), "--log-level", "warning"],
+                               cwd=OPSROOT, env=env, stdout=devnull, stderr=devnull)
+        bill = subprocess.Popen([sys.executable, "-m", "uvicorn", "billing.app:app",
+                                 "--port", str(bport), "--log-level", "warning"],
+                                cwd=OPSROOT, env=env, stdout=devnull, stderr=devnull)
+    finally:
+        devnull.close()
     crm_url, bill_url = f"http://localhost:{cport}", f"http://localhost:{bport}"
     for _ in range(80):
         try:

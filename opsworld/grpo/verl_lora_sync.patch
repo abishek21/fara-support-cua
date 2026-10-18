@@ -1,0 +1,84 @@
+--- a/verl/utils/fsdp_utils.py
++++ b/verl/utils/fsdp_utils.py
+@@ -658,5 +658,7 @@ def layered_summon_lora_params(fsdp_module) -> OrderedDict:
+        lora_params = OrderedDict()
+        peft_model = getattr(fsdp_module, "_fsdp_wrapped_module", fsdp_module)
+ 
++    if fsdp_version(fsdp_module) == 1:
++        _lazy_init(fsdp_module, fsdp_module)
+     for name, submodule in fsdp_module.named_modules():
+         if name == "":
+@@ -678,33 +680,23 @@ def layered_summon_lora_params(fsdp_module) -> OrderedDict:
+         # their params are not gathered here and again when their own unit is visited.
+         nested_fsdp_names = {n for n, m in submodule.named_modules() if n != "" and fsdp_version(m) > 0}
+ 
+-        if not any(
+-            "lora_" in n
+-            for n, _ in submodule.named_parameters()
+-            if not any(n.startswith(f"{nn}.") for nn in nested_fsdp_names)
+-        ):
+-            continue
+-
+         if is_fsdp1:
+             submodule._is_root = True
+         summon_ctx = FSDP.summon_full_params(submodule, writeback=False) if is_fsdp1 else nullcontext()
+ 
+-        with summon_ctx:
+-            sub_state_dict = {
+-                n: p
+-                for n, p in submodule.named_parameters()
+-                if not any(n.startswith(f"{nn}.") for nn in nested_fsdp_names)
+-            }
+-            sub_lora_params = get_peft_model_state_dict(peft_model, state_dict=sub_state_dict)
+-            if not sub_lora_params:
+-                continue
+-            sub_lora_params = {
+-                f"{clean_prefix}.{key}": (
+-                    param.full_tensor().detach().cpu() if hasattr(param, "full_tensor") else param.detach().cpu()
+-                )
+-                for key, param in sub_lora_params.items()
+-            }
+-            lora_params.update(sub_lora_params)
++        try:
++            with summon_ctx:
++                sub_state_dict = {
++                    f"{clean_prefix}.{n}": p
++                    for n, p in submodule.named_parameters()
++                    if not any(n.startswith(f"{nn}.") for nn in nested_fsdp_names)
++                }
++                sub_lora_params = get_peft_model_state_dict(peft_model, state_dict=sub_state_dict)
++                lora_params.update(
++                    (key, param.full_tensor().detach().cpu() if hasattr(param, "full_tensor") else param.detach().cpu())
++                    for key, param in sub_lora_params.items()
++                )
++        finally:
+             if is_fsdp1:
+                 submodule._is_root = False
+         get_torch_device().empty_cache()
+@@ -729,25 +721,8 @@ def collect_lora_params(module: FSDP, layered_summon: bool, base_sync_done: bool) -> OrderedDict:
+                     "rollout.load_format=safetensors"
+                 )
+             lora_params = layered_summon_lora_params(module)
+             if not lora_params:
+-                import logging
+-
+-                logging.getLogger(__name__).warning("layered_summon returned empty, falling back to full summon")
+-                # FSDP2 ``DTensor`` params all-gather via ``param.full_tensor()``;
+-                # only FSDP1 needs the explicit summon context.
+-                is_fsdp1 = fsdp_version(module) == 1
+-                summon_ctx = (
+-                    FSDP.summon_full_params(module, writeback=False, offload_to_cpu=True) if is_fsdp1 else nullcontext()
+-                )
+-                with summon_ctx:
+-                    lora_params = get_peft_model_state_dict(peft_model)
+-                    lora_params = {
+-                        name: param.full_tensor().detach().cpu()
+-                        if hasattr(param, "full_tensor")
+-                        else param.detach().cpu()
+-                        for name, param in lora_params.items()
+-                    }
+-                get_torch_device().empty_cache()
++                raise RuntimeError("Layered LoRA collection found no adapter tensors; refusing full-model summon")
+         else:
+             with FSDP.summon_full_params(module, writeback=False):
+                if base_sync_done:

@@ -1,0 +1,46 @@
+--- a/verl/models/transformers/qwen2_vl.py
++++ b/verl/models/transformers/qwen2_vl.py
+@@ -37,5 +37,9 @@ logger = logging.getLogger(__file__)
+ logger.setLevel(os.getenv("VERL_LOGGING_LEVEL", "WARN"))
+ 
+ 
++_flash_supports_window_size = False
++_flash_supports_deterministic = False
++_flash_use_top_left_mask = False
++
+ if is_flash_attn_2_available():
+     from flash_attn import flash_attn_func, flash_attn_varlen_func
+@@ -210,8 +214,33 @@ def _custom_flash_attention_forward(
+     query_states, key_states, value_states = fa_peft_integration_check(
+         query_states, key_states, value_states, target_dtype=torch.bfloat16
+     )
+ 
++    if not is_flash_attn_2_available() and not is_npu_available:
++        if get_ulysses_sequence_parallel_world_size() != 1 or sliding_window is not None:
++            raise NotImplementedError("SDPA fallback requires no sequence parallelism or sliding window")
++        if attention_mask is not None and not bool(torch.all(attention_mask)):
++            raise NotImplementedError("SDPA fallback does not support padded attention")
++        if query_states.shape[1] != key_states.shape[1]:
++            raise NotImplementedError("SDPA fallback requires full-sequence attention")
++        if position_ids is None:
++            position_ids = torch.arange(query_length, device=query_states.device).expand(query_states.shape[0], -1)
++        segments = []
++        for batch_idx in range(query_states.shape[0]):
++            boundaries = (position_ids[batch_idx, 1:] < position_ids[batch_idx, :-1]).nonzero().flatten().tolist()
++            starts = [0] + [index + 1 for index in boundaries]
++            stops = starts[1:] + [query_length]
++            outputs = []
++            for start, stop in zip(starts, stops):
++                query = query_states[batch_idx : batch_idx + 1, start:stop].transpose(1, 2)
++                key = key_states[batch_idx : batch_idx + 1, start:stop].transpose(1, 2)
++                value = value_states[batch_idx : batch_idx + 1, start:stop].transpose(1, 2)
++                outputs.append(torch.nn.functional.scaled_dot_product_attention(
++                    query, key, value, dropout_p=kwargs.get("dropout", 0.0), is_causal=is_causal
++                ).transpose(1, 2))
++            segments.append(torch.cat(outputs, dim=1))
++        return torch.cat(segments, dim=0)
++
+     if position_ids is not None:
+         assert position_ids.ndim == 2  # (batch_size, seq_length / sp_size)
+ 
+     sp_size = get_ulysses_sequence_parallel_world_size()

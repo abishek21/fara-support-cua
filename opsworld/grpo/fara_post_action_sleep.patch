@@ -1,0 +1,17 @@
+diff --git a/src/fara/fara_7b/fara_agent.py b/src/fara/fara_7b/fara_agent.py
+index 62fbc85..ee9b3c3 100644
+--- a/src/fara/fara_7b/fara_agent.py
++++ b/src/fara/fara_7b/fara_agent.py
+@@ -577,7 +577,11 @@ class FaraAgent:
+             raise ValueError(f"Unknown tool: {args['action']}")
+ 
+         await self._playwright_controller.wait_for_load_state(self._page)
+-        await self._playwright_controller.sleep(self._page, 3)
++        # Post-action settle time. Configurable via FARA_POST_ACTION_SLEEP (seconds);
++        # default 3s for live web, but can be lowered for fast local sandboxes.
++        await self._playwright_controller.sleep(
++            self._page, float(os.environ.get("FARA_POST_ACTION_SLEEP", "3"))
++        )
+ 
+         self._num_actions += 1
+         if self.save_screenshots:
