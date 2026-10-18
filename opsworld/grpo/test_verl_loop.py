@@ -1,8 +1,10 @@
 """Contract tests for the verl rollout adapter, without a GPU dependency."""
 import base64
 import io
+import json
 import os
 import sys
+import tempfile
 import types
 import unittest
 from unittest.mock import patch
@@ -109,10 +111,17 @@ class VerlLoopTests(unittest.IsolatedAsyncioTestCase):
                                       "verl.experimental.agent_loop.agent_loop": module}):
             from grpo import verl_loop
 
-            with patch.object(verl_loop, "OpsWorldEpisode", FakeEpisode):
-                result = await verl_loop.OpsWorldAgentLoop().run(
-                    {"temperature": 1}, global_steps=1,
-                    extra_info={"seed": 1, "category": "C5_below", "max_rounds": 3})
+            with tempfile.TemporaryDirectory() as directory:
+                reward_log = os.path.join(directory, "rewards.jsonl")
+                with patch.dict(os.environ, {"OPSWORLD_GRPO_REWARD_LOG": reward_log}):
+                    with patch.object(verl_loop, "OpsWorldEpisode", FakeEpisode):
+                        result = await verl_loop.OpsWorldAgentLoop().run(
+                            {"temperature": 1}, global_steps=1,
+                            extra_info={"seed": 1, "category": "C5_below", "max_rounds": 3})
+                with open(reward_log, encoding="utf-8") as records:
+                    logged = json.loads(records.readline())
+                self.assertEqual((logged["step"], logged["seed"], logged["category"], logged["reward"]),
+                                 (1, 1, "C5_below", 1.0))
             self.assertEqual(result.prompt_ids, [1, 2])
             self.assertEqual(result.response_ids, [11, 5, 6, 7, 12])
             self.assertEqual(result.response_mask, [1, 0, 0, 0, 1])

@@ -410,10 +410,10 @@ scp -P <PORT> -i ~/.ssh/id_ed25519 -r runs/grpo_data root@<HOST>:/root/cua/opswo
 
 Once verl/Fara/Firefox are installed and the base model is available locally,
 use the **Fast replay** command above first. The generic launcher below uses
-four tasks per batch and up to 15 turns; **that four-task batch** is not
-validated on 2xA40. The fused actor cleared one 15-action, one-task step;
-the unfused actor and the longer 20-action configuration OOMed. Do not
-scale the four-task batch on 2xA40 without a separate memory check.
+one task per batch, four rollouts, and up to 15 actions. The fused actor
+cleared one such step; the unfused actor and the longer 20-action
+configuration OOMed. Do not scale to a four-task batch on 2xA40 without
+a separate memory check.
 For a pod where that workload has been proven to fit, run in `opsworld/`:
 
 ```bash
@@ -461,27 +461,62 @@ task and samples four independent trajectories at temperature 1.0 for
 within-task GRPO advantages. Four identical binary verifier rewards have
 zero task advantage; track mixed-reward groups, category success rates,
 `actor/grad_norm`, and KL. Keep the 15-action cap and fused actor; the
-four-task default batch has not passed a memory gate.
+four-task batch has not passed a memory gate.
 
-Run 20 updates as a pilot, then continue from its checkpoint to **100 total
-updates** only if memory, reward variation, and KL remain healthy. At the
-measured 355.81 s/step, 100 updates are roughly 10 hours of optimizer-step
-time plus startup/checkpoint overhead, not a guaranteed runtime. This is
-100 sampled tasks and 400 rollouts, about 17 tasks per category *on average*
-if sampling is balanced; it is not a full pass over 1,794 tasks. Review
-per-category training/validation metrics and run a saved-model held-out
-benchmark before deciding whether to extend to 300 total updates. Do not
-claim GRPO improvement from training reward alone.
+For the overnight run, use **100 consecutive updates** (400 rollouts), with
+checks at step 20 and after step 100. The dataset shuffles training seeds
+with a fixed seed and interleaves categories; the launcher disables verl's
+dataloader shuffle. The first 100 rows contain 100 distinct training seeds:
+C1-C4 each have 17 groups (68 rollouts), C5-C6 each have 16 (64 rollouts).
+The first 300 rows contain 50 groups per category. Regenerate the full
+parquet after pulling this commit; an older `runs/grpo_data/train.parquet`
+will not have this order. The fixed schedule guarantees *exposure*, not
+mixed rewards or improvement. At the measured 355.81 s/step, 100 updates
+take roughly 10 hours of step time plus startup/checkpoint overhead.
 
-For this one-task shape, override the launcher with
-`data.train_batch_size=1`,
-`actor_rollout_ref.actor.ppo_mini_batch_size=1`,
-`actor_rollout_ref.rollout.agent.num_workers=1`,
-`trainer.save_freq=10`, and `trainer.max_actor_ckpt_to_keep=2`.
-Use the same `EXPERIMENT_NAME` for the 20-step pilot and continuation;
-verl's default `trainer.resume_mode=auto` resumes the latest checkpoint
-in that experiment directory. At about 16 GiB per actor checkpoint,
-keeping only two avoids filling a 150 GiB container disk. Before
-stopping or terminating the pod, copy any checkpoint needed for a later
-resume to durable storage: container-disk checkpoints and run logs disappear
-on stop, and a stopped pod still bills for its retained volume disk.
+The launcher defaults to one task per batch, four rollouts, one agent-loop
+worker, no dataloader shuffle, fused actor, checkpoint every 10 updates,
+and two retained actor checkpoints. If `WANDB_API_KEY` is set privately on
+the pod, it also enables W&B alongside console logging under project
+`opsworld` and the chosen `EXPERIMENT_NAME`; never put the key in Git,
+chat, a script argument, or a terminal log. Ensure `wandb` imports in
+the pod's verl venv before launch. From `/root/cua/opsworld`, after the
+CUDA/NCCL setup and dataset generation above, use the same tested A40
+overrides:
+
+```bash
+set -o pipefail
+LD_LIBRARY_PATH=/usr/local/cuda-13.0/compat:${LD_LIBRARY_PATH:-} \
+NCCL_P2P_DISABLE=1 NCCL_SHM_DISABLE=1 VLLM_USE_FLASHINFER_SAMPLER=0 \
+RAY_memory_usage_threshold=0.85 \
+OPSWORLD_GRPO_OUTPUT=/root/cua/opsworld/runs/base_grpo_100 \
+MODEL_PATH=/root/models/Fara-7B TOTAL_STEPS=100 EXPERIMENT_NAME=base-grpo \
+bash grpo/run_grpo.sh \
+  '+actor_rollout_ref.model.override_config.attn_implementation=sdpa' \
+  'actor_rollout_ref.rollout.enforce_eager=true' \
+  'actor_rollout_ref.rollout.max_num_seqs=16' \
+  'actor_rollout_ref.rollout.gpu_memory_utilization=0.35' \
+  'data.train_files=/root/cua/opsworld/runs/grpo_data/train.parquet' \
+  'data.val_files=/root/cua/opsworld/runs/grpo_data/val.parquet' \
+  2>&1 | tee runs/base_grpo_100.log
+```
+
+W&B shows verl's aggregate reward, KL, gradient, and timing metrics.
+`runs/base_grpo_100/rewards.jsonl` logs each completed rollout's step,
+category, seed, reward, and action count for per-category success and
+mixed-group checks; it contains no screenshots or customer details. Check
+that four records arrive per step and that the category counts follow the
+schedule. If a category repeatedly has four identical rewards, extra
+updates for it give no GRPO policy-gradient signal.
+
+At step 100, first export/serve the GRPO LoRA training checkpoint for vLLM;
+that export path has not yet been validated for this pinned verl version and
+must be proven on the new pod before running the fixed held-out 120-task
+evaluation (seeds 9000-9119). Compare with the base score of 66/120 by
+category. Only if it improves should we extend the **same experiment** to
+`TOTAL_STEPS=300`:
+verl's `trainer.resume_mode=auto` resumes the latest step-100 checkpoint
+from `checkpoints/opsworld/base-grpo`. Keep the checkpoint and raw logs on
+durable storage before stopping or terminating that pod; they are lost from
+container disk on stop. Each checkpoint is about 16 GiB, so only the latest
+two are retained. Do not claim improvement from training rewards alone.

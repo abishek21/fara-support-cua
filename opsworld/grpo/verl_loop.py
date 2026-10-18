@@ -4,6 +4,7 @@ from __future__ import annotations
 import base64
 import fcntl
 import io
+import json
 import os
 from contextlib import contextmanager
 from pathlib import Path
@@ -146,6 +147,14 @@ class OpsWorldAgentLoop(AgentLoopBase):
         if not episode.done:
             result = await episode.finish()
             score = float(result["success"])
+        reward_log = os.environ.get("OPSWORLD_GRPO_REWARD_LOG")
+        if reward_log:
+            path = Path(reward_log)
+            path.parent.mkdir(parents=True, exist_ok=True)
+            with path.open("a", encoding="utf-8") as record:
+                fcntl.flock(record, fcntl.LOCK_EX)
+                record.write(json.dumps({"step": model_step + 1, "seed": seed, "category": category,
+                                         "reward": score, "actions": turns, "request_id": request_id}) + "\n")
         return AgentLoopOutput(
             prompt_ids=prompt_ids,
             response_ids=runtime_ids[len(prompt_ids):],
