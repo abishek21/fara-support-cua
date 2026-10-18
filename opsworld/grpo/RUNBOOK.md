@@ -477,7 +477,8 @@ take roughly 10 hours of step time plus startup/checkpoint overhead.
 The launcher defaults to one task per batch, four rollouts, one agent-loop
 worker, no dataloader shuffle, fused actor, checkpoint every 10 updates,
 and two retained actor checkpoints. If `WANDB_API_KEY` is set privately on
-the pod, it also enables W&B alongside console logging under project
+the pod, or the root user runs `/root/verl/.venv/bin/wandb login` in the
+pod terminal, it enables W&B alongside console logging under project
 `opsworld` and the chosen `EXPERIMENT_NAME`; never put the key in Git,
 chat, a script argument, or a terminal log. Ensure `wandb` imports in
 the pod's verl venv before launch. From `/root/cua/opsworld`, after the

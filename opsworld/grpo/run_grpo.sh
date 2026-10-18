@@ -7,7 +7,7 @@ MODEL_PATH="${MODEL_PATH:?Set MODEL_PATH to base Fara or a merged SFT model}"
 GPU_COUNT="${GPU_COUNT:-2}"
 TOTAL_STEPS="${TOTAL_STEPS:-1}"
 LOGGERS='[console]'
-if [[ -n "${WANDB_API_KEY:-}" ]]; then
+if [[ -n "${WANDB_API_KEY:-}" ]] || python -c 'import netrc; assert netrc.netrc().authenticators("api.wandb.ai")' >/dev/null 2>&1; then
     LOGGERS='[console,wandb]'
 fi
 if [[ -n "${ADAPTER_PATH:-}" ]]; then
