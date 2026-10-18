@@ -393,6 +393,10 @@ The 200 ms GPU trace (`runs/grpo_c1_15_fused_retry_gpu.csv`) sampled peaks of
 35,056 MiB and 37,500 MiB, but samples are not allocator high-water marks.
 This proves a single optimizer step with nonzero gradient, not multi-step
 stability or held-out improvement. The checkpoint is on the pod's ephemeral disk.
+The one-step smoke checkpoints do not need to be copied locally; the next
+base-to-GRPO run starts again from base Fara. Terminating this pod discards
+its container-disk checkpoints and raw logs; the measured results are recorded
+here for the next pod session.
 
 ## GRPO launch (first a single training step)
 
@@ -406,9 +410,10 @@ scp -P <PORT> -i ~/.ssh/id_ed25519 -r runs/grpo_data root@<HOST>:/root/cua/opswo
 
 Once verl/Fara/Firefox are installed and the base model is available locally,
 use the **Fast replay** command above first. The generic launcher below uses
-four tasks per batch and up to 15 turns; it is **not** validated on 2xA40.
-Both 15-action C1 and 20-action configurations OOMed there. Do not scale to this setting
-on that pod without a separate memory check.
+four tasks per batch and up to 15 turns; **that four-task batch** is not
+validated on 2xA40. The fused actor cleared one 15-action, one-task step;
+the unfused actor and the longer 20-action configuration OOMed. Do not
+scale the four-task batch on 2xA40 without a separate memory check.
 For a pod where that workload has been proven to fit, run in `opsworld/`:
 
 ```bash
@@ -434,12 +439,49 @@ tokenization, reference/policy logprobs, 0/1 rewards, and one optimizer update
 are checked end-to-end. Preserve all images in the rollout; replacing them
 with text-only tool calls invalidates the experiment.
 
-For base -> GRPO, run one saved/reloadable update, then a 10-20 step pilot.
-Inspect per-category verifier successes and mixed-reward groups before a
-50-100 update run (200-400 distinct training tasks, 800-1600 episodes).
-One pass through the 1794 train tasks would take about 449 updates/7176
-episodes; do not assume an epoch is affordable until the first update gives
-real throughput and GPU memory measurements. Validation uses 114 tasks on
-seeds 300-318; the fixed 120 held-out tasks (seeds 9000-9119) are for
-benchmarking saved models, not for tuning rewards or training. Baseline Fara
-scored 66/120 before GRPO.
+The verified one-task shape takes 1,794 updates and 7,176 rollouts for a
+full pass through the training tasks. A four-task batch would take about
+449 updates but has not passed a memory check on 2xA40. Validation uses
+114 tasks on seeds 300-318; the fixed 120 held-out tasks (seeds 9000-9119)
+are for benchmarking saved models, not for tuning rewards or training.
+Baseline Fara scored 66/120 before GRPO.
+
+### Next pod: base -> GRPO on all six task categories
+
+Recreate the pinned environment and CUDA/NCCL workarounds above, apply both
+verl patches, and generate the full train/validation parquet with
+`python -m grpo.make_dataset --out runs/grpo_data`. This gives 1,794 train
+tasks (seeds 1-299, all six categories) and 114 validation tasks (300-318).
+Keep eval seeds 9000-9119 completely out of training. Start from base
+`/root/models/Fara-7B`; do not resume the single-step smoke adapter.
+
+Keep `rollout.n=4`, `data.train_batch_size=1`, and
+`actor_rollout_ref.actor.ppo_mini_batch_size=1`: each update draws one
+task and samples four independent trajectories at temperature 1.0 for
+within-task GRPO advantages. Four identical binary verifier rewards have
+zero task advantage; track mixed-reward groups, category success rates,
+`actor/grad_norm`, and KL. Keep the 15-action cap and fused actor; the
+four-task default batch has not passed a memory gate.
+
+Run 20 updates as a pilot, then continue from its checkpoint to **100 total
+updates** only if memory, reward variation, and KL remain healthy. At the
+measured 355.81 s/step, 100 updates are roughly 10 hours of optimizer-step
+time plus startup/checkpoint overhead, not a guaranteed runtime. This is
+100 sampled tasks and 400 rollouts, about 17 tasks per category *on average*
+if sampling is balanced; it is not a full pass over 1,794 tasks. Review
+per-category training/validation metrics and run a saved-model held-out
+benchmark before deciding whether to extend to 300 total updates. Do not
+claim GRPO improvement from training reward alone.
+
+For this one-task shape, override the launcher with
+`data.train_batch_size=1`,
+`actor_rollout_ref.actor.ppo_mini_batch_size=1`,
+`actor_rollout_ref.rollout.agent.num_workers=1`,
+`trainer.save_freq=10`, and `trainer.max_actor_ckpt_to_keep=2`.
+Use the same `EXPERIMENT_NAME` for the 20-step pilot and continuation;
+verl's default `trainer.resume_mode=auto` resumes the latest checkpoint
+in that experiment directory. At about 16 GiB per actor checkpoint,
+keeping only two avoids filling a 150 GiB container disk. Before
+stopping or terminating the pod, copy any checkpoint needed for a later
+resume to durable storage: container-disk checkpoints and run logs disappear
+on stop, and a stopped pod still bills for its retained volume disk.
