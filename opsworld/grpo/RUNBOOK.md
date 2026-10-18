@@ -365,6 +365,23 @@ default launch as if it had been validated. No multi-step GRPO training or held-
 GRPO improvement has yet been measured; longer episodes need a separate
 memory strategy before scaling beyond the smoke.
 
+### Fresh 2xA40 pod profile (2026-10-18)
+
+The new A40 host has driver 570.195.03 (CUDA 12.8), while pinned verl installs
+PyTorch 2.11.0+cu130. Installing `cuda-compat-13-0` in the container and setting
+`LD_LIBRARY_PATH=/usr/local/cuda-13.0/compat:$LD_LIBRARY_PATH` enabled GPU
+allocations. Two-rank NCCL stalled until both `NCCL_P2P_DISABLE=1` and
+`NCCL_SHM_DISABLE=1` were set; use these on this host for GRPO.
+
+The one-step, four-rollout C5 seed-1 run with six actions per rollout completed
+in 223.35 seconds and saved a checkpoint, but all rewards were 1: advantage and
+gradient norm were zero. A separate one-step C1 seed-1 run with a 15-action cap
+reached actor update, then OOMed in `logprobs_from_logits_v2` at `F.log_softmax`:
+GPU 0 had only 512 KiB free with 43.86 GiB in use. It finished 0/1 steps and
+saved no checkpoint. One-second GPU sampling missed the transient OOM peak.
+Do not launch 15-action base-to-GRPO training on this 2xA40 configuration;
+reduce actor log-probability memory use or move to more VRAM first.
+
 ## GRPO launch (first a single training step)
 
 From `opsworld/` on the Mac, generate and transfer `runs/grpo_data/` to the
@@ -378,7 +395,7 @@ scp -P <PORT> -i ~/.ssh/id_ed25519 -r runs/grpo_data root@<HOST>:/root/cua/opswo
 Once verl/Fara/Firefox are installed and the base model is available locally,
 use the **Fast replay** command above first. The generic launcher below uses
 four tasks per batch and up to 15 turns; it is **not** validated on 2xA40.
-The earlier 20-turn configuration OOMed there. Do not scale to this setting
+Both 15-action C1 and 20-action configurations OOMed there. Do not scale to this setting
 on that pod without a separate memory check.
 For a pod where that workload has been proven to fit, run in `opsworld/`:
 
