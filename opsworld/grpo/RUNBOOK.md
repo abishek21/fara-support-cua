@@ -379,8 +379,20 @@ gradient norm were zero. A separate one-step C1 seed-1 run with a 15-action cap
 reached actor update, then OOMed in `logprobs_from_logits_v2` at `F.log_softmax`:
 GPU 0 had only 512 KiB free with 43.86 GiB in use. It finished 0/1 steps and
 saved no checkpoint. One-second GPU sampling missed the transient OOM peak.
-Do not launch 15-action base-to-GRPO training on this 2xA40 configuration;
-reduce actor log-probability memory use or move to more VRAM first.
+Do not launch 15-action base-to-GRPO training with the unfused actor on
+this 2xA40 configuration; its log-probability path OOMs.
+
+The fused Qwen2.5-VL log-probability path (`model.use_fused_kernels=true`,
+`model.fused_kernel_options.impl_backend=torch`) cleared this one-step gate on
+the same pod. The seed-1 C1 run kept four rollouts and the 15-action cap:
+`runs/grpo_c1_15_fused_retry.log` records step 1 in 355.81 seconds, a saved
+checkpoint at `checkpoints/opsworld/smoke-c1-15-fused/global_step_1`,
+`critic/score/min=0`, `max=1`, `mean=0.25`, and `actor/grad_norm=1.2421875`.
+One rollout completed both refund and CRM note; three failed verification.
+The 200 ms GPU trace (`runs/grpo_c1_15_fused_retry_gpu.csv`) sampled peaks of
+35,056 MiB and 37,500 MiB, but samples are not allocator high-water marks.
+This proves a single optimizer step with nonzero gradient, not multi-step
+stability or held-out improvement. The checkpoint is on the pod's ephemeral disk.
 
 ## GRPO launch (first a single training step)
 
