@@ -1,4 +1,5 @@
 """Contract tests for the verl rollout adapter, without a GPU dependency."""
+import asyncio
 import base64
 import io
 import json
@@ -95,76 +96,147 @@ class FakeEpisode:
         self.closed = True
 
 
+def load_loop():
+    root = types.ModuleType("verl")
+    experimental = types.ModuleType("verl.experimental")
+    package = types.ModuleType("verl.experimental.agent_loop")
+    module = types.ModuleType("verl.experimental.agent_loop.agent_loop")
+    module.AgentLoopBase = FakeBase
+    module.AgentLoopMetrics = lambda: FakeOutput()
+    module.AgentLoopOutput = FakeOutput
+    with patch.dict(sys.modules, {"verl": root, "verl.experimental": experimental,
+                                  "verl.experimental.agent_loop": package,
+                                  "verl.experimental.agent_loop.agent_loop": module}):
+        from grpo import verl_loop
+    return verl_loop
+
+
 class VerlLoopTests(unittest.IsolatedAsyncioTestCase):
     async def test_mask_images_reward_and_cleanup(self):
-        from importlib import import_module
-
-        root = types.ModuleType("verl")
-        experimental = types.ModuleType("verl.experimental")
-        package = types.ModuleType("verl.experimental.agent_loop")
-        module = types.ModuleType("verl.experimental.agent_loop.agent_loop")
-        module.AgentLoopBase = FakeBase
-        module.AgentLoopMetrics = lambda: FakeOutput()
-        module.AgentLoopOutput = FakeOutput
-        with patch.dict(sys.modules, {"verl": root, "verl.experimental": experimental,
-                                      "verl.experimental.agent_loop": package,
-                                      "verl.experimental.agent_loop.agent_loop": module}):
-            from grpo import verl_loop
-
-            with tempfile.TemporaryDirectory() as directory:
-                reward_log = os.path.join(directory, "rewards.jsonl")
-                with patch.dict(os.environ, {"OPSWORLD_GRPO_REWARD_LOG": reward_log}):
-                    with patch.object(verl_loop, "OpsWorldEpisode", FakeEpisode):
-                        result = await verl_loop.OpsWorldAgentLoop().run(
-                            {"temperature": 1}, global_steps=1,
-                            extra_info={"seed": 1, "category": "C5_below", "max_rounds": 3})
-                with open(reward_log, encoding="utf-8") as records:
-                    logged = json.loads(records.readline())
-                self.assertEqual((logged["step"], logged["seed"], logged["category"], logged["reward"]),
-                                 (1, 1, "C5_below", 1.0))
-            self.assertEqual(result.prompt_ids, [1, 2])
-            self.assertEqual(result.response_ids, [11, 5, 6, 7, 12])
-            self.assertEqual(result.response_mask, [1, 0, 0, 0, 1])
-            self.assertEqual(result.response_logprobs, [-0.5, 0, 0, 0, -0.2])
-            self.assertEqual(len(result.multi_modal_data["images"]), 2)
-            self.assertEqual(result.reward_score, 1.0)
-            self.assertEqual(result.extra_fields["min_global_steps"], 0)
-            self.assertEqual(result.extra_fields["max_global_steps"], 1)
-            self.assertTrue(FakeEpisode.instances[-1].closed)
-            no_version = verl_loop.OpsWorldAgentLoop()
-            for output in no_version.server_manager.outputs:
-                output.extra_fields["global_steps"] = None
-            with patch.object(verl_loop, "OpsWorldEpisode", FakeEpisode):
-                fallback = await no_version.run(
-                    {"temperature": 1}, global_steps=1,
-                    extra_info={"seed": 1, "category": "C5_below", "max_rounds": 3})
-            self.assertEqual(fallback.extra_fields["min_global_steps"], 0)
-            self.assertEqual(fallback.extra_fields["max_global_steps"], 0)
-            newer = verl_loop.OpsWorldAgentLoop()
-            for step, output in zip((3, 4), newer.server_manager.outputs):
-                output.extra_fields["global_steps"] = step
-            with patch.object(verl_loop, "OpsWorldEpisode", FakeEpisode):
-                reported = await newer.run(
-                    {"temperature": 1}, global_steps=3,
-                    extra_info={"seed": 1, "category": "C5_below", "max_rounds": 3})
-            self.assertEqual(reported.extra_fields["min_global_steps"], 3)
-            self.assertEqual(reported.extra_fields["max_global_steps"], 4)
-            with patch.dict(os.environ, {"OPSWORLD_GRPO_MAX_ROUNDS": "2"}):
+        verl_loop = load_loop()
+        with tempfile.TemporaryDirectory() as directory:
+            reward_log = os.path.join(directory, "rewards.jsonl")
+            with patch.dict(os.environ, {"OPSWORLD_GRPO_REWARD_LOG": reward_log}):
                 with patch.object(verl_loop, "OpsWorldEpisode", FakeEpisode):
-                    await verl_loop.OpsWorldAgentLoop().run(
+                    result = await verl_loop.OpsWorldAgentLoop().run(
                         {"temperature": 1}, global_steps=1,
                         extra_info={"seed": 1, "category": "C5_below", "max_rounds": 3})
-            self.assertEqual(FakeEpisode.instances[-1].max_rounds, 2)
-            with verl_loop.leased_worker() as first:
-                with verl_loop.leased_worker() as second:
-                    self.assertNotEqual(first, second)
-            missing = verl_loop.OpsWorldAgentLoop()
-            missing.server_manager.outputs[0].log_probs = None
+            with open(reward_log, encoding="utf-8") as records:
+                logged = json.loads(records.readline())
+            self.assertEqual((logged["step"], logged["seed"], logged["category"], logged["reward"]),
+                             (1, 1, "C5_below", 1.0))
+        self.assertEqual(result.prompt_ids, [1, 2])
+        self.assertEqual(result.response_ids, [11, 5, 6, 7, 12])
+        self.assertEqual(result.response_mask, [1, 0, 0, 0, 1])
+        self.assertEqual(result.response_logprobs, [-0.5, 0, 0, 0, -0.2])
+        self.assertEqual(len(result.multi_modal_data["images"]), 2)
+        self.assertEqual(result.reward_score, 1.0)
+        self.assertEqual(result.extra_fields["min_global_steps"], 0)
+        self.assertEqual(result.extra_fields["max_global_steps"], 1)
+        self.assertTrue(FakeEpisode.instances[-1].closed)
+        no_version = verl_loop.OpsWorldAgentLoop()
+        for output in no_version.server_manager.outputs:
+            output.extra_fields["global_steps"] = None
+        with patch.object(verl_loop, "OpsWorldEpisode", FakeEpisode):
+            fallback = await no_version.run(
+                {"temperature": 1}, global_steps=1,
+                extra_info={"seed": 1, "category": "C5_below", "max_rounds": 3})
+        self.assertEqual(fallback.extra_fields["min_global_steps"], 0)
+        self.assertEqual(fallback.extra_fields["max_global_steps"], 0)
+        newer = verl_loop.OpsWorldAgentLoop()
+        for step, output in zip((3, 4), newer.server_manager.outputs):
+            output.extra_fields["global_steps"] = step
+        with patch.object(verl_loop, "OpsWorldEpisode", FakeEpisode):
+            reported = await newer.run(
+                {"temperature": 1}, global_steps=3,
+                extra_info={"seed": 1, "category": "C5_below", "max_rounds": 3})
+        self.assertEqual(reported.extra_fields["min_global_steps"], 3)
+        self.assertEqual(reported.extra_fields["max_global_steps"], 4)
+        with patch.dict(os.environ, {"OPSWORLD_GRPO_MAX_ROUNDS": "2"}):
             with patch.object(verl_loop, "OpsWorldEpisode", FakeEpisode):
-                with self.assertRaisesRegex(ValueError, "action logprobs"):
-                    await missing.run({"temperature": 1}, global_steps=1, extra_info={
-                        "seed": 1, "category": "C5_below", "max_rounds": 3})
-            self.assertTrue(FakeEpisode.instances[-1].closed)
+                await verl_loop.OpsWorldAgentLoop().run(
+                    {"temperature": 1}, global_steps=1,
+                    extra_info={"seed": 1, "category": "C5_below", "max_rounds": 3})
+        self.assertEqual(FakeEpisode.instances[-1].max_rounds, 2)
+        with verl_loop.leased_worker() as first:
+            with verl_loop.leased_worker() as second:
+                self.assertNotEqual(first, second)
+        missing = verl_loop.OpsWorldAgentLoop()
+        missing.server_manager.outputs[0].log_probs = None
+        with patch.object(verl_loop, "OpsWorldEpisode", FakeEpisode):
+            with self.assertRaisesRegex(ValueError, "action logprobs"):
+                await missing.run({"temperature": 1}, global_steps=1, extra_info={
+                    "seed": 1, "category": "C5_below", "max_rounds": 3})
+        self.assertTrue(FakeEpisode.instances[-1].closed)
+
+    async def test_timeout_retries_fresh_episode(self):
+        verl_loop = load_loop()
+
+        class FirstStartHangs(FakeEpisode):
+            attempts = 0
+
+            async def start(self, seed, category):
+                self.__class__.attempts += 1
+                if self.attempts == 1:
+                    await asyncio.Event().wait()
+                return await super().start(seed, category)
+
+        with tempfile.TemporaryDirectory() as directory:
+            reward_log = os.path.join(directory, "rewards.jsonl")
+            with patch.dict(os.environ, {"OPSWORLD_GRPO_REWARD_LOG": reward_log,
+                                      "OPSWORLD_GRPO_ROLLOUT_TIMEOUT": "0.02"}):
+                with patch.object(verl_loop, "OpsWorldEpisode", FirstStartHangs):
+                    result = await verl_loop.OpsWorldAgentLoop().run(
+                        {}, global_steps=1, extra_info={"seed": 1, "category": "C5_below"})
+            with open(reward_log, encoding="utf-8") as records:
+                self.assertEqual(len(records.readlines()), 1)
+        self.assertEqual(result.reward_score, 1.0)
+        self.assertEqual(FirstStartHangs.attempts, 2)
+        self.assertTrue(all(episode.closed for episode in FirstStartHangs.instances[-2:]))
+
+    async def test_exhausted_timeout_uses_real_partial_trace(self):
+        verl_loop = load_loop()
+
+        class SecondCallHangs(FakeServer):
+            def __init__(self):
+                super().__init__()
+                self.calls = 0
+
+            async def generate(self, **kwargs):
+                self.calls += 1
+                if self.calls >= 2:
+                    await asyncio.Event().wait()
+                return await super().generate(**kwargs)
+
+        with tempfile.TemporaryDirectory() as directory:
+            reward_log = os.path.join(directory, "rewards.jsonl")
+            with patch.dict(os.environ, {"OPSWORLD_GRPO_REWARD_LOG": reward_log,
+                                      "OPSWORLD_GRPO_ROLLOUT_TIMEOUT": "0.02"}):
+                with patch.object(verl_loop, "OpsWorldEpisode", FakeEpisode):
+                    loop = verl_loop.OpsWorldAgentLoop()
+                    loop.server_manager = SecondCallHangs()
+                    result = await loop.run({}, global_steps=1,
+                                            extra_info={"seed": 1, "category": "C5_below"})
+            with open(reward_log, encoding="utf-8") as records:
+                logged = [json.loads(line) for line in records]
+        self.assertEqual((result.response_ids, result.response_mask, result.reward_score),
+                         ([11, 5, 6, 7], [1, 0, 0, 0], 0.0))
+        self.assertEqual((len(logged), logged[0]["timeout"], logged[0]["attempts"]), (1, True, 1))
+        self.assertTrue(all(episode.closed for episode in FakeEpisode.instances[-2:]))
+
+    async def test_exhausted_timeout_without_tokens_fails_explicitly(self):
+        verl_loop = load_loop()
+
+        class StartAlwaysHangs(FakeEpisode):
+            async def start(self, seed, category):
+                await asyncio.Event().wait()
+
+        with patch.dict(os.environ, {"OPSWORLD_GRPO_ROLLOUT_TIMEOUT": "0.02"}):
+            with patch.object(verl_loop, "OpsWorldEpisode", StartAlwaysHangs):
+                with self.assertRaisesRegex(TimeoutError, "without generated tokens"):
+                    await verl_loop.OpsWorldAgentLoop().run(
+                        {}, global_steps=1, extra_info={"seed": 1, "category": "C5_below"})
+        self.assertTrue(all(episode.closed for episode in StartAlwaysHangs.instances[-2:]))
 
 
 if __name__ == "__main__":

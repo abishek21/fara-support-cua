@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import asyncio
+import logging
+import subprocess
 from pathlib import Path
 from urllib.parse import urlsplit
 
@@ -154,11 +156,18 @@ class OpsWorldEpisode:
     async def close(self) -> None:
         if self.agent is not None:
             try:
-                await self.agent.close()
+                await asyncio.wait_for(self.agent.close(), timeout=10)
+            except Exception as exc:
+                logging.warning("browser cleanup failed: %s", exc)
             finally:
                 self.agent = None
         if self.environment is not None:
             for process in self.environment["procs"]:
-                process.terminate()
-                await asyncio.to_thread(process.wait, 10)
+                if process.poll() is None:
+                    process.terminate()
+                    try:
+                        await asyncio.to_thread(process.wait, 5)
+                    except subprocess.TimeoutExpired:
+                        process.kill()
+                        await asyncio.to_thread(process.wait, 5)
             self.environment = None

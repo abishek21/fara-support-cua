@@ -1,10 +1,12 @@
 """OpsWorld multi-turn multimodal agent loop for verl v0.9.1."""
 from __future__ import annotations
 
+import asyncio
 import base64
 import fcntl
 import io
 import json
+import logging
 import os
 from contextlib import contextmanager
 from pathlib import Path
@@ -72,23 +74,66 @@ class OpsWorldAgentLoop(AgentLoopBase):
         task = kwargs["extra_info"]
         seed, category = int(task["seed"]), str(task["category"])
         model_step = int(kwargs["global_steps"]) - 1
-        metrics = AgentLoopMetrics()
-        response_mask: list[int] = []
-        response_logprobs: list[float] | None = [] if self.rollout_config.calculate_log_probs else None
-        request_id = uuid4().hex
-        with leased_worker() as worker:
-            episode = OpsWorldEpisode(worker, os.environ.get("OPSWORLD_GRPO_OUTPUT", "runs/grpo"),
-                                      max_rounds=min(int(task.get("max_rounds", 20)),
-                                                     int(os.environ.get("OPSWORLD_GRPO_MAX_ROUNDS", "20"))),
-                                      keep_all_screenshots=True)
-            try:
-                return await self._rollout(episode, seed, category, sampling_params, priority,
-                                           metrics, response_mask, response_logprobs, request_id, model_step)
-            finally:
-                await episode.close()
+        timeout = float(os.environ.get("OPSWORLD_GRPO_ROLLOUT_TIMEOUT", "360"))
+        retries = int(os.environ.get("OPSWORLD_GRPO_ROLLOUT_RETRIES", "1"))
+        partial = None
+        for attempt in range(retries + 1):
+            metrics = AgentLoopMetrics()
+            response_mask: list[int] = []
+            response_logprobs: list[float] | None = [] if self.rollout_config.calculate_log_probs else None
+            request_id = uuid4().hex
+            trace = {}
+            with leased_worker() as worker:
+                episode = OpsWorldEpisode(worker, os.environ.get("OPSWORLD_GRPO_OUTPUT", "runs/grpo"),
+                                          max_rounds=min(int(task.get("max_rounds", 20)),
+                                                         int(os.environ.get("OPSWORLD_GRPO_MAX_ROUNDS", "20"))),
+                                          keep_all_screenshots=True)
+                try:
+                    return await asyncio.wait_for(
+                        self._rollout(episode, seed, category, sampling_params, priority,
+                                      metrics, response_mask, response_logprobs, request_id, model_step, trace), timeout)
+                except TimeoutError:
+                    logging.warning("rollout timed out: step=%s seed=%s category=%s request_id=%s attempt=%s",
+                                    model_step + 1, seed, category, request_id, attempt + 1)
+                    if trace.get("response_mask") and any(trace["response_mask"]):
+                        partial = (trace.copy(), metrics, request_id, attempt + 1)
+                    if attempt == retries and partial is None:
+                        raise TimeoutError("rollout exhausted retries without generated tokens")
+                finally:
+                    await asyncio.wait_for(episode.close(), timeout=30)
+
+        trace, metrics, request_id, attempt = partial
+        self._record_reward(model_step, seed, category, 0.0, trace["turns"], request_id,
+                            timeout=True, attempts=attempt)
+        return AgentLoopOutput(
+            prompt_ids=trace["prompt_ids"],
+            response_ids=trace["runtime_ids"][len(trace["prompt_ids"]):],
+            response_mask=trace["response_mask"],
+            response_logprobs=trace["response_logprobs"],
+            multi_modal_data={"images": trace["images"]},
+            mm_processor_kwargs=self._get_mm_processor_kwargs(),
+            reward_score=0.0,
+            num_turns=trace["turns"] * 2,
+            metrics=metrics,
+            extra_fields={"seed": seed, "category": category,
+                          "min_global_steps": trace["min_model_step"],
+                          "max_global_steps": trace["max_model_step"]},
+        )
+
+    @staticmethod
+    def _record_reward(model_step, seed, category, score, turns, request_id, **details):
+        reward_log = os.environ.get("OPSWORLD_GRPO_REWARD_LOG")
+        if reward_log:
+            path = Path(reward_log)
+            path.parent.mkdir(parents=True, exist_ok=True)
+            with path.open("a", encoding="utf-8") as record:
+                fcntl.flock(record, fcntl.LOCK_EX)
+                record.write(json.dumps({"step": model_step + 1, "seed": seed, "category": category,
+                                         "reward": score, "actions": turns, "request_id": request_id,
+                                         **details}) + "\n")
 
     async def _rollout(self, episode, seed, category, sampling_params, priority,
-                       metrics, response_mask, response_logprobs, request_id, model_step):
+                       metrics, response_mask, response_logprobs, request_id, model_step, trace):
         score = 0.0
         turns = 0
         min_model_step = None
@@ -99,6 +144,9 @@ class OpsWorldAgentLoop(AgentLoopBase):
         images = (await self.process_multi_modal_info(messages))["images"]
         prompt_ids = await self.ct_build_initial_tokens(messages, images=images)
         runtime_ids = prompt_ids
+        trace.update(prompt_ids=prompt_ids, runtime_ids=runtime_ids, response_mask=response_mask,
+                 response_logprobs=response_logprobs, images=images, turns=turns,
+                 min_model_step=model_step, max_model_step=model_step)
         while turns < episode.max_rounds and len(response_mask) < self.response_length:
             remaining = self.response_length - len(response_mask)
             if remaining <= 8:
@@ -125,6 +173,9 @@ class OpsWorldAgentLoop(AgentLoopBase):
                 assistant_logprobs=output.log_probs if response_logprobs is not None else None,
             )
             runtime_ids = merge.token_ids
+            trace.update(runtime_ids=runtime_ids, response_mask=response_mask,
+                         response_logprobs=response_logprobs, turns=turns,
+                         min_model_step=min_model_step, max_model_step=max_model_step)
             text = self.tokenizer.decode(output.token_ids, skip_special_tokens=True)
             next_messages, done, score, _ = await episode.step(text)
             if done or len(response_mask) >= self.response_length:
@@ -143,18 +194,13 @@ class OpsWorldAgentLoop(AgentLoopBase):
                 raise ValueError("screenshot history exceeds verl max_model_len")
             runtime_ids, response_mask, response_logprobs = merge.token_ids, new_mask, new_logprobs
             images.extend((await self.process_multi_modal_info(appended[1:]))["images"])
+            trace.update(runtime_ids=runtime_ids, response_mask=response_mask,
+                         response_logprobs=response_logprobs, images=images)
             messages = context
         if not episode.done:
             result = await episode.finish()
             score = float(result["success"])
-        reward_log = os.environ.get("OPSWORLD_GRPO_REWARD_LOG")
-        if reward_log:
-            path = Path(reward_log)
-            path.parent.mkdir(parents=True, exist_ok=True)
-            with path.open("a", encoding="utf-8") as record:
-                fcntl.flock(record, fcntl.LOCK_EX)
-                record.write(json.dumps({"step": model_step + 1, "seed": seed, "category": category,
-                                         "reward": score, "actions": turns, "request_id": request_id}) + "\n")
+        self._record_reward(model_step, seed, category, score, turns, request_id)
         return AgentLoopOutput(
             prompt_ids=prompt_ids,
             response_ids=runtime_ids[len(prompt_ids):],

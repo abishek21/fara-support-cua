@@ -519,6 +519,16 @@ that four records arrive per step and that the category counts follow the
 schedule. If a category repeatedly has four identical rewards, extra
 updates for it give no GRPO policy-gradient signal.
 
+Each rollout has a 360-second deadline and one fresh-episode retry by default
+(`OPSWORLD_GRPO_ROLLOUT_TIMEOUT` and `OPSWORLD_GRPO_ROLLOUT_RETRIES`). If both
+attempts time out, a real partial token trace can be returned with reward 0
+and `timeout: true` in the reward log. If neither attempt generated any tokens,
+the run fails explicitly rather than supplying invalid on-policy training data.
+After an interrupted run, stop the old trainer before restarting; verl's
+`trainer.resume_mode=auto` uses its latest complete checkpoint. To keep old
+logs intact, set distinct `OPSWORLD_GRPO_OUTPUT`, `OPSWORLD_GRPO_RUN_LOG`, and
+`OPSWORLD_GRPO_RUN_EXIT` paths for the resumed launch. The W&B run will be new.
+
 At step 100, first export/serve the GRPO LoRA training checkpoint for vLLM;
 that export path has not yet been validated for this pinned verl version and
 must be proven on the new pod before running the fixed held-out 120-task
