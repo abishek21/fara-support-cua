@@ -483,7 +483,16 @@ pod terminal, it enables W&B alongside console logging under project
 chat, a script argument, or a terminal log. Ensure `wandb` imports in
 the pod's verl venv before launch. From `/root/cua/opsworld`, after the
 CUDA/NCCL setup and dataset generation above, use the same tested A40
-overrides:
+overrides. `grpo/launch_base_100.sh` runs the following command, requires
+the root user's stored W&B login, and records both
+`runs/base_grpo_100.log` and `runs/base_grpo_100.exit`. Start it in tmux:
+
+```bash
+tmux new-session -d -s grpo-base-100 'bash /root/cua/opsworld/grpo/launch_base_100.sh'
+tmux capture-pane -pt grpo-base-100 -S -30
+```
+
+The equivalent inline command is:
 
 ```bash
 set -o pipefail
