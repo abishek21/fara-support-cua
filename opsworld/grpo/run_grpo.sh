@@ -25,6 +25,8 @@ python -m verl.trainer.main_ppo \
     'actor_rollout_ref.actor.freeze_vision_tower=true' \
     'actor_rollout_ref.actor.fsdp_config.model_dtype=bf16' \
     'actor_rollout_ref.ref.fsdp_config.model_dtype=bf16' \
+    'actor_rollout_ref.model.use_fused_kernels=true' \
+    '+actor_rollout_ref.model.fused_kernel_options.impl_backend=torch' \
     'actor_rollout_ref.actor.ppo_micro_batch_size_per_gpu=1' \
     'actor_rollout_ref.actor.ppo_mini_batch_size=4' \
     'actor_rollout_ref.actor.ppo_max_token_len_per_gpu=32768' \
